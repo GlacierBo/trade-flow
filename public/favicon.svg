@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8B5CF6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- 背景圆角矩形 -->
+  <rect x="5" y="5" width="90" height="90" rx="20" fill="url(#gradient)"/>
+  
+  <!-- T 字母 -->
+  <text x="50" y="70" font-family="Arial, sans-serif" font-size="60" font-weight="bold" 
+        fill="white" text-anchor="middle">T</text>
+  
+  <!-- 上升箭头（表示股票上涨） -->
+  <path d="M 65 25 L 75 35 L 85 25" stroke="white" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <line x1="75" y1="35" x2="75" y2="15" stroke="white" stroke-width="4" stroke-linecap="round"/>
+</svg>
