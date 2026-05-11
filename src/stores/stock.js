@@ -5,6 +5,7 @@ export const useStockStore = defineStore('stock', {
   state: () => ({
     trades: [],
     positions: [],
+    tags: [],
     searchQuery: '',
 
     // Auth
@@ -14,6 +15,7 @@ export const useStockStore = defineStore('stock', {
     // Trade modal
     tradeModalVisible: false,
     tradeType: 'buy',
+    tradePresetData: null, // 预填充数据（从标签点击传入）
 
     // Sell modal
     sellModalVisible: false,
@@ -77,7 +79,7 @@ export const useStockStore = defineStore('stock', {
     },
 
     async loadData() {
-      await Promise.all([this.loadTrades(), this.loadPositions()])
+      await Promise.all([this.loadTrades(), this.loadPositions(), this.loadTags()])
     },
 
     async loadTrades() {
@@ -96,6 +98,15 @@ export const useStockStore = defineStore('stock', {
       }
     },
 
+    async loadTags() {
+      try {
+        this.tags = await api.fetchTradeTags()
+      } catch (e) {
+        console.error('加载标签失败:', e)
+        // 标签加载失败不影响主流程
+      }
+    },
+
     async createTrade(form) {
       const { contract, name, price, shares, feeRate, minFee } = form
       try {
@@ -108,6 +119,13 @@ export const useStockStore = defineStore('stock', {
           min_fee: minFee || 0.2
         }
         const result = await api.createTrade(data)
+        
+        // 只在买入时更新标签
+        if (this.tradeType === 'buy' && contract && name) {
+          await api.upsertTradeTag(contract, name)
+          await this.loadTags()
+        }
+        
         this.showToast('交易成功', 'success')
         this.closeTradeModal()
         await this.loadData()
@@ -151,6 +169,25 @@ export const useStockStore = defineStore('stock', {
       }
     },
 
+    async deleteTag(tagId) {
+      try {
+        await api.deleteTradeTag(tagId)
+        this.showToast('标签已删除', 'success')
+        await this.loadTags()
+      } catch (e) {
+        this.showToast(e.message, 'error')
+      }
+    },
+
+    handleTagClick(tag) {
+      // 设置预填充数据（只填充合约代码和名称，不填充价格）
+      this.tradePresetData = {
+        contract: tag.contract,
+        name: tag.name
+      }
+      this.openTradeModal()
+    },
+
     async updatePrice(positionId, price) {
       try {
         await api.updatePositionPrice(positionId, parseFloat(price))
@@ -180,6 +217,7 @@ export const useStockStore = defineStore('stock', {
 
     closeTradeModal() {
       this.tradeModalVisible = false
+      this.tradePresetData = null
     },
 
     setTradeType(type) {

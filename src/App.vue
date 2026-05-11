@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import { useStockStore } from './stores/stock'
 import LoginPage from './components/LoginPage.vue'
+import QuickTrade from './components/QuickTrade.vue'
 import TradeList from './components/TradeList.vue'
 import PositionList from './components/PositionList.vue'
 import TradeModal from './components/TradeModal.vue'
@@ -34,7 +35,7 @@ const handleLogout = () => {
   <LoginPage v-if="!store.isAuthenticated" />
 
   <!-- Main App -->
-  <div v-else class="max-w-6xl mx-auto">
+  <div v-else class="max-w-7xl mx-auto px-4">
     <header class="mb-6 flex flex-wrap justify-between items-center gap-4">
       <div>
         <h1 class="text-2xl font-black tracking-tight accent-gradient">TradeFlow</h1>
@@ -59,8 +60,14 @@ const handleLogout = () => {
       </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- 左侧：快捷交易 -->
       <div class="lg:col-span-2">
+        <QuickTrade />
+      </div>
+
+      <!-- 中间：交易明细 -->
+      <div class="lg:col-span-6">
         <div class="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
             <h2 class="text-lg font-black text-blue-400">交易明细</h2>
@@ -77,7 +84,8 @@ const handleLogout = () => {
         </div>
       </div>
 
-      <div class="lg:col-span-1">
+      <!-- 右侧：持仓概览 -->
+      <div class="lg:col-span-4">
         <div class="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden sticky top-4">
           <div class="p-4">
             <h2 class="text-lg font-black text-blue-400 mb-4">持仓概览</h2>

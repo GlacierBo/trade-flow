@@ -332,3 +332,79 @@ export async function clearPosition(positionId) {
     throw new Error('清仓失败')
   }
 }
+
+// 获取所有交易标签
+export async function fetchTradeTags() {
+  try {
+    const { data, error } = await supabase
+      .from('stock_trade_tags')
+      .select('*')
+      .order('updated_at', { ascending: false })
+
+    if (error) throw error
+
+    return data || []
+  } catch (error) {
+    console.error('加载交易标签失败:', error)
+    throw new Error('加载交易标签失败')
+  }
+}
+
+// 删除交易标签
+export async function deleteTradeTag(tagId) {
+  try {
+    const { error } = await supabase
+      .from('stock_trade_tags')
+      .delete()
+      .eq('id', tagId)
+
+    if (error) throw error
+
+    return { status: 'success' }
+  } catch (error) {
+    console.error('删除标签失败:', error)
+    throw new Error('删除标签失败')
+  }
+}
+
+// 创建或更新交易标签（仅在买入时调用）
+export async function upsertTradeTag(contract, name) {
+  try {
+    // 查询标签是否存在
+    const { data: existingTag } = await supabase
+      .from('stock_trade_tags')
+      .select('*')
+      .eq('contract', contract)
+      .single()
+
+    if (existingTag) {
+      // 更新现有标签
+      const { error } = await supabase
+        .from('stock_trade_tags')
+        .update({
+          name: name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('contract', contract)
+
+      if (error) throw error
+    } else {
+      // 创建新标签
+      const { error } = await supabase
+        .from('stock_trade_tags')
+        .insert([{
+          contract: contract,
+          name: name,
+          latest_price: 0
+        }])
+
+      if (error) throw error
+    }
+
+    return { status: 'success' }
+  } catch (error) {
+    console.error('更新标签失败:', error)
+    // 标签更新失败不影响主流程，静默失败
+    return { status: 'error', message: error.message }
+  }
+}
