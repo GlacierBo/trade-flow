@@ -1,4 +1,4 @@
-# TradeFlow — 网格交易记录
+# TradeFlow — 网格交易记录 & 持仓比例
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vue.js&logoColor=white" alt="Vue 3" />
@@ -10,13 +10,14 @@
 
 ## 项目简介
 
-TradeFlow 是一个专为网格交易设计的记录工具，帮助用户追踪每笔网格交易的盈利情况。
+TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户追踪每笔网格交易的盈利情况并管理资产配置。
 
 **核心价值**：
 - 📊 **精准记录**：详细记录每笔买入和卖出操作
 - 💰 **盈利追踪**：自动计算每笔网格交易的单笔收益和累计收益
 - 📈 **成本摊薄**：通过网格高抛低吸，实时显示持仓成本降低过程
 - ✅ **数据准确**：全量重算机制，确保盈亏数据准确无误
+- 📐 **持仓比例**：按标签分类计算各资产占比，辅助仓位管理
 
 **技术特点**：
 - ✅ **无后端服务**：直接使用 Supabase（PostgreSQL + Auto API）
@@ -44,7 +45,9 @@ TradeFlow 是一个专为网格交易设计的记录工具，帮助用户追踪�
 
 2. **执行数据库 Schema**
    - 在 Supabase Dashboard → SQL Editor
-   - 复制 `supabase-schema.sql` 全部内容并执行
+   - 先执行 `supabase-schema.sql`（核心表结构）
+   - 再执行 `supabase-schema-tags.sql`（标签表 + 持仓比例表）
+   - 如果已有数据，执行 `rebuild-positions.sql` 重建持仓记录
 
 ### 本地开发
 
@@ -84,22 +87,29 @@ npm run dev
 ```
 PythonProject/
 ├── src/                        # Vue 3 前端源码
-│   ├── App.vue                 # 根组件（含登录逻辑）
+│   ├── App.vue                 # 根组件（含登录 + Tab 导航）
 │   ├── api/stock.js            # Supabase Client 封装
 │   ├── stores/stock.js         # Pinia store（含认证状态）
 │   └── components/             # Vue 组件
 │       ├── LoginPage.vue       # 登录页面
 │       ├── TradeList.vue       # 交易明细列表
-│       ├── PositionList.vue    # 持仓概览
+│       ├── PositionList.vue    # 持仓概览（含已平仓）
 │       ├── TradeModal.vue      # 新增交易弹窗
 │       ├── SellModal.vue       # 卖出操作弹窗
 │       ├── ConfirmModal.vue    # 确认对话框
-│       └── Toast.vue           # 消息提示
+│       ├── Toast.vue           # 消息提示
+│       ├── QuickTrade.vue      # 快捷交易标签
+│       ├── PortfolioRatio.vue  # 持仓比例计算页
+│       └── PortfolioModal.vue  # 持仓比例新增弹窗
+├── sql/
+│   ├── supabase-schema.sql     # 核心数据库 schema（交易表、持仓表、触发器）
+│   ├── supabase-schema-tags.sql # 标签表 + 持仓比例表
+│   ├── portfolio_items.sql     # 持仓比例表独立建表 SQL
+│   └── rebuild-positions.sql   # 重建持仓记录脚本
 ├── public/
 │   └── favicon.svg             # 网站图标
 ├── .env.example                # 环境变量模板
 ├── package.json                # 项目依赖
-├── supabase-schema.sql         # PostgreSQL 数据库 schema
 └── .github/workflows/deploy.yml # GitHub Actions 配置
 ```
 
@@ -125,7 +135,15 @@ PythonProject/
 - 删除卖出记录自动恢复买入记录的可卖份额和收益
 - 触发器自动重新计算持仓和盈亏
 
-### 盈利计算（网格交易核心）
+### 持仓概览
+
+- 展示所有当前持有仓位（持仓数量、成本、现价、收益）
+- **已平仓记录保留**：完全卖出后不会删除，显示为"已平仓"状态
+- 已平仓记录展示累计收益，方便回顾整体盈亏
+- 支持修改现价实时计算浮动盈亏
+- 一键清仓操作（删除所有关联交易记录）
+
+### 盈利计算
 
 - **单笔收益**：每次卖出时自动计算该笔网格的盈利
 - **累计收益**：买入记录累加所有关联卖出的收益，展示总盈利
@@ -143,12 +161,42 @@ PythonProject/
 - 支持删除不需要的标签
 - 预留实时价格字段，后续可扩展行情功能
 
+### 持仓比例
+
+通过独立 Tab 页切换，支持按标签分类计算资产配置比例。
+
+- **左右结构 2:8**：左侧快捷列表 + 右侧比例计算
+- **新增弹窗**：名称、代码、Tag（支持历史标签自动补全）、价格
+- **快捷添加**：左侧点击已存合约快速填充弹窗
+- **按 Tag 分组**：同一标签下的合约汇总计算
+- **双重百分比**：每个合约占该 Tag 的比例 + 占总计的比例
+- **金额显隐**：👁 小眼睛切换显示/隐藏金额（替换为 ****）
+- **数据持久化**：持仓项目保存到 Supabase，刷新不丢失
+
 ### 登录认证
 
 - 简单的用户名密码登录（默认：admin/admin）
 - 登录状态保存到 localStorage
 - 刷新页面保持登录状态
 - 右上角显示用户名和退出按钮
+
+---
+
+## 数据库表结构
+
+### stock_trades — 交易记录表
+存储所有买入和卖出操作，通过 `buy_order_no` 关联。
+
+### stock_positions — 持仓表
+自动计算的持仓汇总，每次交易变动后触发器全量重算。
+- 持仓 > 0：活跃持仓，显示成本、现价、浮动盈亏
+- 持仓 = 0：已平仓记录，保留累计收益便于复盘
+
+### stock_trade_tags — 交易标签表
+快捷交易使用的合约标签，买入时自动创建。
+
+### portfolio_items — 持仓比例表
+持仓比例计算的数据源，存储名称、代码、Tag、价格。
 
 ---
 

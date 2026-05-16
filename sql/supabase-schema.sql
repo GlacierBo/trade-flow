@@ -160,10 +160,26 @@ BEGIN
     
     -- 计算持仓数量
     v_position_shares := v_total_buy_shares - v_total_sell_shares;
-    
-    -- 如果持仓为零或负数，删除持仓记录
+
+    -- 计算已实现收益（所有卖出的 single_profit 汇总）
+    SELECT COALESCE(SUM(single_profit), 0)
+    INTO v_total_profit
+    FROM stock_trades
+    WHERE contract = p_contract AND trade_type = 'sell';
+
+    -- 如果持仓为零或负数，保留记录用于查看收益，标记为已平仓
     IF v_position_shares <= 0 THEN
-        DELETE FROM stock_positions WHERE contract = p_contract;
+        INSERT INTO stock_positions (contract, name, total_shares, avg_cost, latest_price, market_value, profit, profit_rate, updated_at)
+        VALUES (p_contract, v_name, 0, 0, 0, 0, v_total_profit, 0, NOW())
+        ON CONFLICT (contract) DO UPDATE SET
+            name = EXCLUDED.name,
+            total_shares = 0,
+            avg_cost = 0,
+            latest_price = 0,
+            market_value = 0,
+            profit = EXCLUDED.profit,
+            profit_rate = 0,
+            updated_at = NOW();
         RETURN;
     END IF;
     
@@ -180,12 +196,6 @@ BEGIN
     
     -- 计算市值
     v_market_value := v_position_shares * v_latest_price;
-    
-    -- 计算已实现收益（所有卖出的 single_profit 汇总）
-    SELECT COALESCE(SUM(single_profit), 0)
-    INTO v_total_profit
-    FROM stock_trades
-    WHERE contract = p_contract AND trade_type = 'sell';
     
     -- 计算未实现盈亏和收益率
     v_unrealized_profit := (v_latest_price - v_avg_cost) * v_position_shares;

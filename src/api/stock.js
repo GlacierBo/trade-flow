@@ -12,35 +12,37 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // 获取所有交易记录（按买入单号分组）
 export async function fetchTrades() {
   try {
-    // 获取所有买入记录
-    const { data: buyTrades, error: buyError } = await supabase
+    // 一次性获取所有交易记录
+    const { data: allTrades, error } = await supabase
       .from('stock_trades')
       .select('*')
-      .eq('trade_type', 'buy')
       .order('created_at', { ascending: false })
 
-    if (buyError) throw buyError
+    if (error) throw error
 
-    // 为每个买入记录查询关联的卖出记录
-    const tradesWithSells = await Promise.all(
-      buyTrades.map(async (buy) => {
-        const { data: sells, error: sellError } = await supabase
-          .from('stock_trades')
-          .select('*')
-          .eq('buy_order_no', buy.buy_order_no)
-          .eq('trade_type', 'sell')
-          .order('created_at', { ascending: true })
+    // 在 JS 中分组
+    const buys = []
+    const sellMap = {}
 
-        if (sellError) throw sellError
-
-        return {
-          ...buy,
-          sells: sells || []
+    for (const trade of allTrades) {
+      if (trade.trade_type === 'buy') {
+        buys.push({ ...trade, sells: [] })
+      } else {
+        if (!sellMap[trade.buy_order_no]) {
+          sellMap[trade.buy_order_no] = []
         }
-      })
-    )
+        sellMap[trade.buy_order_no].push(trade)
+      }
+    }
 
-    return tradesWithSells
+    // 按 created_at 升序排列每个 buy 的 sells
+    for (const buy of buys) {
+      const sells = sellMap[buy.buy_order_no] || []
+      sells.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      buy.sells = sells
+    }
+
+    return buys
   } catch (error) {
     console.error('加载交易记录失败:', error)
     throw new Error('加载交易记录失败')
@@ -251,7 +253,6 @@ export async function fetchPositions() {
     const { data, error } = await supabase
       .from('stock_positions')
       .select('*')
-      .gt('total_shares', 0)
       .order('updated_at', { ascending: false })
 
     if (error) throw error
@@ -364,6 +365,64 @@ export async function deleteTradeTag(tagId) {
   } catch (error) {
     console.error('删除标签失败:', error)
     throw new Error('删除标签失败')
+  }
+}
+
+// ============================================
+// 持仓比例计算 API
+// ============================================
+
+// 获取所有持仓比例项目
+export async function fetchPortfolioItems() {
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_items')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('加载持仓项目失败:', error)
+    throw new Error('加载持仓项目失败')
+  }
+}
+
+// 创建持仓比例项目
+export async function createPortfolioItem(data) {
+  try {
+    const { data: item, error } = await supabase
+      .from('portfolio_items')
+      .insert([{
+        name: data.name,
+        contract: data.contract,
+        tag: data.tag || '',
+        price: parseFloat(data.price)
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return item
+  } catch (error) {
+    console.error('创建持仓项目失败:', error)
+    throw new Error(error.message || '保存失败')
+  }
+}
+
+// 删除持仓比例项目
+export async function deletePortfolioItem(id) {
+  try {
+    const { error } = await supabase
+      .from('portfolio_items')
+      .delete()
+      .eq('id', id)
+
+    if (error) throw error
+    return { status: 'success' }
+  } catch (error) {
+    console.error('删除持仓项目失败:', error)
+    throw new Error(error.message || '删除失败')
   }
 }
 

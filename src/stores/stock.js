@@ -32,7 +32,15 @@ export const useStockStore = defineStore('stock', {
     priceValue: '',
 
     // Toasts
-    toasts: []
+    toasts: [],
+
+    // Tab
+    activeTab: 'trade',
+
+    // Portfolio
+    portfolioItems: [],
+    portfolioModalVisible: false,
+    portfolioPresetData: null
   }),
 
   getters: {
@@ -261,6 +269,62 @@ export const useStockStore = defineStore('stock', {
     closePriceModal() {
       this.priceModalVisible = false
       this.priceTarget = null
+    },
+
+    // Tab actions
+    setActiveTab(tab) {
+      this.activeTab = tab
+    },
+
+    // Portfolio actions
+    async loadPortfolioItems() {
+      try {
+        this.portfolioItems = await api.fetchPortfolioItems()
+      } catch (e) {
+        console.error('加载持仓项目失败:', e)
+      }
+    },
+
+    async createPortfolioItem(form) {
+      const { name, contract, tag, price } = form
+      try {
+        const item = await api.createPortfolioItem({ name, contract, tag, price })
+        this.showToast('保存成功', 'success')
+        this.closePortfolioModal()
+        await this.loadPortfolioItems()
+        return item
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        throw e
+      }
+    },
+
+    async deletePortfolioItem(id) {
+      try {
+        await api.deletePortfolioItem(id)
+        this.showToast('已删除', 'success')
+        await this.loadPortfolioItems()
+      } catch (e) {
+        this.showToast(e.message, 'error')
+      }
+    },
+
+    handlePortfolioTagClick(item) {
+      this.portfolioPresetData = {
+        name: item.name,
+        contract: item.contract,
+        tag: item.tag || ''
+      }
+      this.openPortfolioModal()
+    },
+
+    openPortfolioModal() {
+      this.portfolioModalVisible = true
+    },
+
+    closePortfolioModal() {
+      this.portfolioModalVisible = false
+      this.portfolioPresetData = null
     },
 
     showToast(msg, type = 'success') {

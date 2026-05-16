@@ -9,13 +9,20 @@ import TradeModal from './components/TradeModal.vue'
 import SellModal from './components/SellModal.vue'
 import ConfirmModal from './components/ConfirmModal.vue'
 import Toast from './components/Toast.vue'
+import PortfolioRatio from './components/PortfolioRatio.vue'
+import PortfolioModal from './components/PortfolioModal.vue'
 
 const store = useStockStore()
+
+const tabs = [
+  { key: 'trade', label: '网格交易' },
+  { key: 'portfolio', label: '持仓比例' }
+]
 
 onMounted(() => {
   // 检查登录状态
   store.checkAuth()
-  
+
   // 如果已登录，加载数据
   if (store.isAuthenticated) {
     store.loadData()
@@ -36,7 +43,7 @@ const handleLogout = () => {
 
   <!-- Main App -->
   <div v-else class="max-w-7xl mx-auto px-4">
-    <header class="mb-6 flex flex-wrap justify-between items-center gap-4">
+    <header class="mb-4 flex flex-wrap justify-between items-center gap-4">
       <div>
         <h1 class="text-2xl font-black tracking-tight accent-gradient">TradeFlow</h1>
         <p class="text-xs text-gray-500 font-bold uppercase tracking-widest">Smart Trading Management</p>
@@ -52,6 +59,7 @@ const handleLogout = () => {
           退出登录
         </button>
         <button
+          v-if="store.activeTab === 'trade'"
           @click="store.openTradeModal()"
           class="bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white px-5 py-2.5 rounded-xl font-black shadow-lg shadow-blue-500/30 transition-all active:scale-95 text-sm"
         >
@@ -60,7 +68,25 @@ const handleLogout = () => {
       </div>
     </header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+    <!-- Tab 导航 -->
+    <div class="flex gap-1 mb-5 bg-gray-800/30 rounded-xl p-1 border border-gray-700/30 w-fit">
+      <button
+        v-for="tab in tabs"
+        :key="tab.key"
+        @click="store.setActiveTab(tab.key)"
+        :class="[
+          'px-5 py-2 rounded-lg text-sm font-black transition-all',
+          store.activeTab === tab.key
+            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30'
+            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+        ]"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <!-- 网格交易页 -->
+    <div v-if="store.activeTab === 'trade'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
       <!-- 左侧：快捷交易 -->
       <div class="lg:col-span-2">
         <QuickTrade />
@@ -94,9 +120,13 @@ const handleLogout = () => {
         </div>
       </div>
     </div>
+
+    <!-- 持仓比例页 -->
+    <PortfolioRatio v-if="store.activeTab === 'portfolio'" />
   </div>
 
   <TradeModal />
+  <PortfolioModal />
   <SellModal />
   <ConfirmModal />
   <Toast />

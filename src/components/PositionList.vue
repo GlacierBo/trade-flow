@@ -16,6 +16,10 @@ function profitSign(val) {
   return val >= 0 ? '+' : ''
 }
 
+function isClosed(p) {
+  return p.total_shares === 0
+}
+
 function openPriceEdit(p) {
   priceEditValue.value = String(p.latest_price)
   store.openPriceModal(p.id, p.latest_price)
@@ -41,8 +45,9 @@ function onClear(p) {
       暂无持仓
     </div>
 
+    <!-- 活跃持仓 -->
     <div
-      v-for="p in store.positions"
+      v-for="p in store.positions.filter(p => !isClosed(p))"
       :key="p.id"
       class="bg-gray-800/50 border border-gray-700/50 rounded-xl p-3"
     >
@@ -72,6 +77,35 @@ function onClear(p) {
           @click="onClear(p)"
           class="flex-1 bg-red-900/50 hover:bg-red-800/50 text-red-400 py-1.5 rounded-lg text-xs font-bold border border-red-700/50 transition"
         >清仓</button>
+      </div>
+    </div>
+
+    <!-- 已平仓分隔 -->
+    <div v-if="store.positions.filter(p => isClosed(p)).length > 0" class="pt-2">
+      <div class="flex items-center gap-2 mb-3">
+        <div class="flex-1 h-px bg-gray-700/50"></div>
+        <span class="text-xs text-gray-500 font-bold tracking-wider">已平仓</span>
+        <div class="flex-1 h-px bg-gray-700/50"></div>
+      </div>
+
+      <div
+        v-for="p in store.positions.filter(p => isClosed(p))"
+        :key="p.id"
+        class="bg-gray-800/30 border border-gray-700/30 rounded-xl p-3 opacity-70 hover:opacity-100 transition-opacity"
+      >
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <span class="font-black text-gray-400 text-sm">{{ p.name }}</span>
+            <span class="text-xs text-gray-600">{{ p.contract }}</span>
+            <span class="text-xs bg-gray-700 text-gray-500 px-1.5 py-0.5 rounded font-bold">已平仓</span>
+          </div>
+          <span class="font-bold text-sm" :class="profitClass(p.profit)">
+            {{ profitSign(p.profit) }}¥{{ p.profit.toFixed(2) }}
+          </span>
+        </div>
+        <div class="text-xs text-gray-500 mt-1">
+          累计收益
+        </div>
       </div>
     </div>
 
