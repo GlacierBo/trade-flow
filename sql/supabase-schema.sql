@@ -145,6 +145,12 @@ BEGIN
     FROM stock_trades
     WHERE contract = p_contract
     LIMIT 1;
+
+    -- 如果没有交易记录了（清仓全部删除），直接删除持仓记录
+    IF v_name IS NULL THEN
+        DELETE FROM stock_positions WHERE contract = p_contract;
+        RETURN;
+    END IF;
     
     -- 计算总买入
     SELECT COALESCE(SUM(shares), 0), COALESCE(SUM(amount), 0)
