@@ -86,9 +86,47 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 
 ### 4. 认证
 
-- 简单的用户名密码登录（默认：admin/admin）
-- 登录状态保存到 localStorage
+#### 4.1 注册
+
+- 仅需用户名注册，验证用户名格式（正则：`/^[a-zA-Z0-9]+$/`，仅支持字母和数字）
+- 密码由服务端自动生成（12位随机十六进制字符串）
+- 使用 MD5 + 盐值加密存储
+- 注册成功后一次性展示生成的密码，提示用户登录后修改密码
+- 禁止重复用户名注册
+
+#### 4.2 登录
+
+- 使用用户名 + 密码登录
+- 验证通过服务端 RPC 函数完成（MD5(salt || password) 比对）
+- 登录状态保存到 localStorage（username、role、userId）
 - 刷新页面保持登录状态
+
+#### 4.3 修改密码
+
+- 登录后右上角"修改密码"按钮
+- 需验证原密码
+- 新密码至少 6 位
+- 新密码同样 MD5 + 盐值加密存储
+
+#### 4.4 用户管理（管理员）
+
+- Tab 导航增加"用户管理"入口，仅 `role=admin` 可见
+- 展示所有注册用户列表（ID、用户名、角色、注册时间）
+- 支持分页（每页 20 条）
+- 管理员可重置任意用户密码为 `123456`
+- 重置后页面展示新密码一次
+
+#### 4.5 默认账号
+
+| 用户名 | 密码 | 角色 |
+|--------|------|------|
+| admin | admin | admin |
+| user001 | 123456 | user |
+
+#### 4.6 权限
+
+- `user` 角色：使用网格交易、持仓比例功能
+- `admin` 角色：在 user 基础上增加用户管理权限
 
 ### 5. 数据库表结构
 
@@ -145,14 +183,36 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 | tag | VARCHAR(50) | 分类标签（如白酒、科技） |
 | price | DECIMAL(12, 2) | 价格/金额 |
 
-### 6. 数据库触发器
+#### app_users — 用户表
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | INTEGER GENERATED ALWAYS AS IDENTITY | 主键 |
+| username | VARCHAR(50) UNIQUE | 用户名（登录账号） |
+| password | VARCHAR(255) | MD5(salt + password) |
+| salt | VARCHAR(32) | 盐值 |
+| role | VARCHAR(20) | 角色：user / admin |
+| created_at | TIMESTAMP WITH TIME ZONE | 注册时间 |
+
+### 6. 数据库 RPC 函数
+
+| 函数 | 参数 | 说明 |
+|------|------|------|
+| verify_user | p_username, p_password | 验证登录，返回用户信息或 NULL |
+| register_user | p_username | 注册用户，自动生成密码，返回密码 |
+| change_password | p_user_id, p_old_password, p_new_password | 修改密码 |
+| reset_user_password | p_user_id | 管理员重置密码为 123456 |
+| get_users | p_page, p_page_size | 分页获取用户列表 |
+
+### 7. 数据库触发器
 
 - 交易表 `AFTER INSERT OR UPDATE OR DELETE` → `recalculate_position(contract)` 全量重算持仓
 - 持仓比例表 `BEFORE UPDATE` → 自动更新 `updated_at`
+- 用户表 `BEFORE UPDATE` → 自动更新 `updated_at`
 
-### 7. SQL 文件清单
+### 8. SQL 文件清单
 
 | 文件 | 说明 |
 |------|------|
 | `sql/supabase-schema.sql` | 核心表 + 函数 + 触发器 |
-| `sql/supabase-schema-tags.sql` | 标签表 + 持仓比例表 |
+| `sql/supabase-schema-tags.sql` | 标签表 + 持仓比例表 + 用户表 + 认证函数 |

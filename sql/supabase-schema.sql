@@ -22,10 +22,10 @@ CREATE TABLE IF NOT EXISTS stock_trades (
 );
 
 -- 索引优化
-CREATE INDEX idx_stock_trades_contract ON stock_trades(contract);
-CREATE INDEX idx_stock_trades_buy_order_no ON stock_trades(buy_order_no);
-CREATE INDEX idx_stock_trades_trade_type ON stock_trades(trade_type);
-CREATE INDEX idx_stock_trades_created_at ON stock_trades(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_contract ON stock_trades(contract);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_buy_order_no ON stock_trades(buy_order_no);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_trade_type ON stock_trades(trade_type);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_created_at ON stock_trades(created_at DESC);
 
 -- 2. 持仓表 (stock_positions)
 CREATE TABLE IF NOT EXISTS stock_positions (
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS stock_positions (
 );
 
 -- 索引优化
-CREATE INDEX idx_stock_positions_contract ON stock_positions(contract);
+CREATE INDEX IF NOT EXISTS idx_stock_positions_contract ON stock_positions(contract);
 
 -- 3. 流水号计数器表 (daily_serial_counters)
 CREATE TABLE IF NOT EXISTS daily_serial_counters (
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS daily_serial_counters (
 );
 
 -- 索引优化
-CREATE INDEX idx_daily_serial_counters_date ON daily_serial_counters(counter_date);
+CREATE INDEX IF NOT EXISTS idx_daily_serial_counters_date ON daily_serial_counters(counter_date);
 
 -- ============================================
 -- 行级安全策略 (RLS)
@@ -65,16 +65,19 @@ ALTER TABLE daily_serial_counters ENABLE ROW LEVEL SECURITY;
 
 -- 创建策略（允许所有操作，因为是个人应用）
 -- 如果需要用户认证，可以改为: USING (auth.uid() = user_id)
+DROP POLICY IF EXISTS "Allow all operations on stock_trades" ON stock_trades;
 CREATE POLICY "Allow all operations on stock_trades" ON stock_trades
     FOR ALL
     USING (true)
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all operations on stock_positions" ON stock_positions;
 CREATE POLICY "Allow all operations on stock_positions" ON stock_positions
     FOR ALL
     USING (true)
     WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow all operations on daily_serial_counters" ON daily_serial_counters;
 CREATE POLICY "Allow all operations on daily_serial_counters" ON daily_serial_counters
     FOR ALL
     USING (true)
@@ -260,6 +263,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 在交易表上创建触发器
+DROP TRIGGER IF EXISTS trg_stock_trades_recalc ON stock_trades;
 CREATE TRIGGER trg_stock_trades_recalc
 AFTER INSERT OR UPDATE OR DELETE ON stock_trades
 FOR EACH ROW

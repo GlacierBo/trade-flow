@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useStockStore } from './stores/stock'
 import LoginPage from './components/LoginPage.vue'
 import QuickTrade from './components/QuickTrade.vue'
@@ -11,19 +11,24 @@ import ConfirmModal from './components/ConfirmModal.vue'
 import Toast from './components/Toast.vue'
 import PortfolioRatio from './components/PortfolioRatio.vue'
 import PortfolioModal from './components/PortfolioModal.vue'
+import UserManagement from './components/UserManagement.vue'
+import ChangePasswordForm from './components/ChangePasswordForm.vue'
 
 const store = useStockStore()
 
-const tabs = [
-  { key: 'trade', label: '网格交易' },
-  { key: 'portfolio', label: '持仓比例' }
-]
+const tabs = computed(() => {
+  const list = [
+    { key: 'trade', label: '网格交易' },
+    { key: 'portfolio', label: '持仓比例' }
+  ]
+  if (store.isAdmin) {
+    list.push({ key: 'users', label: '用户管理' })
+  }
+  return list
+})
 
 onMounted(() => {
-  // 检查登录状态
   store.checkAuth()
-
-  // 如果已登录，加载数据
   if (store.isAuthenticated) {
     store.loadData()
   }
@@ -48,20 +53,26 @@ const handleLogout = () => {
         <h1 class="text-2xl font-black tracking-tight accent-gradient">TradeFlow</h1>
         <p class="text-xs text-gray-500 font-bold uppercase tracking-widest">Smart Trading Management</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <span class="text-sm text-gray-400">
-          👤 {{ store.username }}
+          {{ store.username }}
         </span>
         <button
-          @click="handleLogout"
-          class="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2.5 rounded-xl font-bold transition-all active:scale-95 text-sm"
+          @click="store.openPasswordModal()"
+          class="bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-2 rounded-xl font-bold transition-all active:scale-95 text-xs"
         >
-          退出登录
+          修改密码
+        </button>
+        <button
+          @click="handleLogout"
+          class="bg-gray-700 hover:bg-gray-600 text-gray-300 px-4 py-2 rounded-xl font-bold transition-all active:scale-95 text-sm"
+        >
+          退出
         </button>
         <button
           v-if="store.activeTab === 'trade'"
           @click="store.openTradeModal()"
-          class="bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white px-5 py-2.5 rounded-xl font-black shadow-lg shadow-blue-500/30 transition-all active:scale-95 text-sm"
+          class="bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white px-5 py-2 rounded-xl font-black shadow-lg shadow-blue-500/30 transition-all active:scale-95 text-sm"
         >
           + 新增交易
         </button>
@@ -87,12 +98,9 @@ const handleLogout = () => {
 
     <!-- 网格交易页 -->
     <div v-if="store.activeTab === 'trade'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-      <!-- 左侧：快捷交易 -->
       <div class="lg:col-span-2">
         <QuickTrade />
       </div>
-
-      <!-- 中间：交易明细 -->
       <div class="lg:col-span-6">
         <div class="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
@@ -109,8 +117,6 @@ const handleLogout = () => {
           <TradeList />
         </div>
       </div>
-
-      <!-- 右侧：持仓概览 -->
       <div class="lg:col-span-4">
         <div class="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden sticky top-4">
           <div class="p-4">
@@ -123,6 +129,9 @@ const handleLogout = () => {
 
     <!-- 持仓比例页 -->
     <PortfolioRatio v-if="store.activeTab === 'portfolio'" />
+
+    <!-- 用户管理页（仅管理员） -->
+    <UserManagement v-if="store.activeTab === 'users'" />
   </div>
 
   <TradeModal />
@@ -130,4 +139,13 @@ const handleLogout = () => {
   <SellModal />
   <ConfirmModal />
   <Toast />
+
+  <!-- 修改密码弹窗 -->
+  <div
+    v-if="store.passwordModalVisible"
+    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    @click.self="store.closePasswordModal()"
+  >
+    <ChangePasswordForm />
+  </div>
 </template>

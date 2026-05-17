@@ -11,6 +11,16 @@ export const useStockStore = defineStore('stock', {
     // Auth
     isAuthenticated: false,
     username: '',
+    userId: null,
+    userRole: '',
+
+    // Admin
+    users: [],
+    usersTotal: 0,
+    usersPage: 1,
+
+    // Password change modal
+    passwordModalVisible: false,
 
     // Trade modal
     tradeModalVisible: false,
@@ -57,33 +67,117 @@ export const useStockStore = defineStore('stock', {
 
   actions: {
     // Auth actions
-    login(username, password) {
-      // 简单的用户名密码验证（实际项目中应该使用后端 API）
-      if (username === 'admin' && password === 'admin') {
+    async login(username, password) {
+      try {
+        const result = await api.verifyLogin(username, password)
+        if (!result) {
+          this.showToast('用户名或密码错误', 'error')
+          return false
+        }
         this.isAuthenticated = true
-        this.username = username
-        // 保存到 localStorage
-        localStorage.setItem('auth_token', 'admin_token')
-        localStorage.setItem('username', username)
+        this.username = result.username
+        this.userId = result.id
+        this.userRole = result.role
+        localStorage.setItem('auth_token', 'db_token')
+        localStorage.setItem('username', result.username)
+        localStorage.setItem('user_role', result.role)
+        localStorage.setItem('user_id', String(result.id))
         return true
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return false
       }
-      return false
+    },
+
+    async register(username) {
+      try {
+        const result = await api.registerUser(username)
+        if (result.error) {
+          this.showToast(result.error, 'error')
+          return null
+        }
+        return result.password
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return null
+      }
+    },
+
+    async changePassword(oldPassword, newPassword) {
+      if (!this.userId) return false
+      try {
+        const ok = await api.changePassword(this.userId, oldPassword, newPassword)
+        if (ok) {
+          this.showToast('密码修改成功', 'success')
+          this.passwordModalVisible = false
+        } else {
+          this.showToast('原密码错误', 'error')
+        }
+        return ok
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return false
+      }
     },
 
     logout() {
       this.isAuthenticated = false
       this.username = ''
+      this.userId = null
+      this.userRole = ''
+      this.activeTab = 'trade'
       localStorage.removeItem('auth_token')
       localStorage.removeItem('username')
+      localStorage.removeItem('user_role')
+      localStorage.removeItem('user_id')
     },
 
     checkAuth() {
       const token = localStorage.getItem('auth_token')
       const username = localStorage.getItem('username')
+      const role = localStorage.getItem('user_role')
+      const uid = localStorage.getItem('user_id')
       if (token && username) {
         this.isAuthenticated = true
         this.username = username
+        this.userRole = role || ''
+        this.userId = uid ? parseInt(uid) : null
       }
+    },
+
+    // Admin actions
+    async loadUsers(page = 1) {
+      try {
+        this.usersPage = page
+        const result = await api.fetchUsers(page, 20)
+        this.users = result.users || []
+        this.usersTotal = result.total || 0
+      } catch (e) {
+        this.showToast(e.message, 'error')
+      }
+    },
+
+    async resetUserPassword(userId) {
+      try {
+        const newPassword = await api.resetUserPassword(userId)
+        this.showToast(`密码已重置为: ${newPassword}`, 'success')
+        return newPassword
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return null
+      }
+    },
+
+    openPasswordModal() {
+      this.passwordModalVisible = true
+    },
+
+    closePasswordModal() {
+      this.passwordModalVisible = false
+    },
+
+    get isAdmin() {
+      return this.userRole === 'admin'
     },
 
     async loadData() {

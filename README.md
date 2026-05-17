@@ -21,8 +21,9 @@
 - **成本摊薄跟踪** — 网格高抛低吸，持仓成本持续降低，数据一目了然
 - **持仓概览** — 持仓数量、成本、现价、浮动盈亏，已平仓记录保留可查
 - **快捷交易** — 常用合约一键标签化，快速发起网格操作
-- **持仓比例分析** — 按 Tag 分组计算各资产占比，支持金额显隐切换
+- **持仓比例分析** — 按 Tag 分组计算各资产占比，进度条配色，金额显隐切换
 - **全量重算机制** — 每次交易变动自动重算持仓和盈亏，数据准确
+- **用户认证** — 用户名注册/登录，MD5+盐值加密，管理员可管理用户、重置密码
 
 ## Tech Stack
 
@@ -51,7 +52,13 @@ npm install
 npm run dev
 ```
 
-访问 `http://localhost:5173`，默认账号 `admin / admin`。
+访问 `http://localhost:5173`。
+
+默认账号：
+| 用户名 | 密码 | 角色 |
+|--------|------|------|
+| admin | admin | 管理员 |
+| user001 | 123456 | 普通用户 |
 
 ## Directory Structure
 
@@ -63,7 +70,7 @@ src/
 ├── api/stock.js             # Supabase client + all API functions
 ├── stores/stock.js          # Pinia store (state, actions, modals)
 └── components/
-    ├── LoginPage.vue        # Login form
+    ├── LoginPage.vue        # Login / Register (username + auto-generated password)
     ├── TradeList.vue        # Trade history (buys with sell children)
     ├── TradeModal.vue       # Add/edit trade dialog
     ├── SellModal.vue        # Sell against a buy order
@@ -72,10 +79,12 @@ src/
     ├── ConfirmModal.vue     # Confirmation dialog
     ├── Toast.vue            # Toast notifications
     ├── PortfolioRatio.vue   # Portfolio ratio calculator page
-    └── PortfolioModal.vue   # Add portfolio item dialog
+    ├── PortfolioModal.vue   # Add portfolio item dialog
+    ├── UserManagement.vue   # Admin: paginated user list, reset passwords
+    └── ChangePasswordForm.vue # Change password modal
 sql/
 ├── supabase-schema.sql      # Core schema: trades, positions, counters, triggers
-└── supabase-schema-tags.sql # Tags table + portfolio_items table
+└── supabase-schema-tags.sql # Tags, portfolio_items, app_users + auth RPC functions
 ```
 
 ## Database
@@ -86,6 +95,7 @@ PostgreSQL tables managed via Supabase. Key design:
 - **`stock_positions`** — Auto-calculated view per contract, recalculated by DB trigger on every trade change
 - **`stock_trade_tags`** — Quick-trade presets, auto-created on buy
 - **`portfolio_items`** — Portfolio ratio data source (name, contract, tag, price)
+- **`app_users`** — User accounts with MD5+salt password hashing, role-based access (user/admin)
 
 ## Deployment
 

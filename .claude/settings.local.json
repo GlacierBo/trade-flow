@@ -3,7 +3,14 @@
     "allow": [
       "Bash(npx vite *)",
       "Bash(git status *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(netstat -ano)",
+      "Bash(findstr :5173)",
+      "Bash(curl -s http://localhost:5173)",
+      "WebFetch(domain:localhost)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(curl -s http://localhost:5173/trade-flow/)",
+      "Bash(curl -s http://localhost:5173/trade-flow/src/main.js)"
     ]
   }
 }

@@ -467,3 +467,76 @@ export async function upsertTradeTag(contract, name) {
     return { status: 'error', message: error.message }
   }
 }
+
+// ============================================
+// 用户认证 API
+// ============================================
+
+export async function verifyLogin(username, password) {
+  try {
+    const { data, error } = await supabase.rpc('verify_user', {
+      p_username: username,
+      p_password: password
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('登录验证失败:', error)
+    throw new Error('登录验证失败')
+  }
+}
+
+export async function registerUser(username) {
+  try {
+    const { data, error } = await supabase.rpc('register_user', {
+      p_username: username
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('注册失败:', error)
+    throw new Error(error.message || '注册失败')
+  }
+}
+
+export async function changePassword(userId, oldPassword, newPassword) {
+  try {
+    const { data, error } = await supabase.rpc('change_password', {
+      p_user_id: userId,
+      p_old_password: oldPassword,
+      p_new_password: newPassword
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    throw new Error(error.message || '修改密码失败')
+  }
+}
+
+export async function resetUserPassword(userId) {
+  try {
+    const { data, error } = await supabase.rpc('reset_user_password', {
+      p_user_id: userId
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('重置密码失败:', error)
+    throw new Error(error.message || '重置密码失败')
+  }
+}
+
+export async function fetchUsers(page = 1, pageSize = 20) {
+  try {
+    const { data, error } = await supabase.rpc('get_users', {
+      p_page: page,
+      p_page_size: pageSize
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    throw new Error('获取用户列表失败')
+  }
+}
