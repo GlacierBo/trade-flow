@@ -10,12 +10,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // 获取所有交易记录（按买入单号分组）
-export async function fetchTrades() {
+export async function fetchTrades(userId) {
   try {
     // 一次性获取所有交易记录
     const { data: allTrades, error } = await supabase
       .from('stock_trades')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -50,7 +51,7 @@ export async function fetchTrades() {
 }
 
 // 创建交易记录
-export async function createTrade(data) {
+export async function createTrade(data, userId) {
   try {
     const isBuy = data.shares > 0
     
@@ -87,7 +88,8 @@ export async function createTrade(data) {
           trade_type: 'buy',
           trade_date: tradeDate,
           realized_profit: 0,
-          single_profit: 0
+          single_profit: 0,
+          user_id: userId
         }])
         .select()
         .single()
@@ -101,12 +103,13 @@ export async function createTrade(data) {
         throw new Error('卖出操作必须提供买入单号')
       }
 
-      // 查询对应的买入记录
+      // 查询对应的买入记录（只能查询自己的）
       const { data: buyRecord, error: buyError } = await supabase
         .from('stock_trades')
         .select('*')
         .eq('buy_order_no', data.buy_order_no)
         .eq('trade_type', 'buy')
+        .eq('user_id', userId)
         .single()
 
       if (buyError || !buyRecord) {
@@ -143,7 +146,8 @@ export async function createTrade(data) {
           trade_type: 'sell',
           trade_date: tradeDate,
           realized_profit: 0,
-          single_profit: singleProfit
+          single_profit: singleProfit,
+          user_id: userId
         }])
         .select()
         .single()
@@ -170,13 +174,14 @@ export async function createTrade(data) {
 }
 
 // 删除交易记录
-export async function deleteTrade(id) {
+export async function deleteTrade(id, userId) {
   try {
-    // 先查询交易记录
+    // 先查询交易记录（只能删除自己的）
     const { data: trade, error: fetchError } = await supabase
       .from('stock_trades')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single()
 
     if (fetchError || !trade) {
@@ -248,11 +253,12 @@ export async function deleteTrade(id) {
 }
 
 // 获取所有持仓
-export async function fetchPositions() {
+export async function fetchPositions(userId) {
   try {
     const { data, error } = await supabase
       .from('stock_positions')
       .select('*')
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
     if (error) throw error
@@ -265,13 +271,14 @@ export async function fetchPositions() {
 }
 
 // 更新持仓最新价格
-export async function updatePositionPrice(positionId, price) {
+export async function updatePositionPrice(positionId, price, userId) {
   try {
-    // 先获取持仓信息
+    // 先获取持仓信息（只能更新自己的）
     const { data: position, error: fetchError } = await supabase
       .from('stock_positions')
       .select('*')
       .eq('id', positionId)
+      .eq('user_id', userId)
       .single()
 
     if (fetchError || !position) {
@@ -305,24 +312,26 @@ export async function updatePositionPrice(positionId, price) {
 }
 
 // 清仓
-export async function clearPosition(positionId) {
+export async function clearPosition(positionId, userId) {
   try {
-    // 获取持仓信息
+    // 获取持仓信息（只能清自己的仓）
     const { data: position, error: fetchError } = await supabase
       .from('stock_positions')
       .select('*')
       .eq('id', positionId)
+      .eq('user_id', userId)
       .single()
 
     if (fetchError || !position) {
       throw new Error('持仓不存在')
     }
 
-    // 删除该合约的所有交易记录
+    // 删除该合约的所有交易记录（只能删自己的）
     const { error: deleteError } = await supabase
       .from('stock_trades')
       .delete()
       .eq('contract', position.contract)
+      .eq('user_id', userId)
 
     if (deleteError) throw deleteError
 
@@ -335,11 +344,12 @@ export async function clearPosition(positionId) {
 }
 
 // 获取所有交易标签
-export async function fetchTradeTags() {
+export async function fetchTradeTags(userId) {
   try {
     const { data, error } = await supabase
       .from('stock_trade_tags')
       .select('*')
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
     if (error) throw error
@@ -352,12 +362,13 @@ export async function fetchTradeTags() {
 }
 
 // 删除交易标签
-export async function deleteTradeTag(tagId) {
+export async function deleteTradeTag(tagId, userId) {
   try {
     const { error } = await supabase
       .from('stock_trade_tags')
       .delete()
       .eq('id', tagId)
+      .eq('user_id', userId)
 
     if (error) throw error
 
@@ -373,11 +384,12 @@ export async function deleteTradeTag(tagId) {
 // ============================================
 
 // 获取所有持仓比例项目
-export async function fetchPortfolioItems() {
+export async function fetchPortfolioItems(userId) {
   try {
     const { data, error } = await supabase
       .from('portfolio_items')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
     if (error) throw error
@@ -388,16 +400,39 @@ export async function fetchPortfolioItems() {
   }
 }
 
-// 创建持仓比例项目
-export async function createPortfolioItem(data) {
+// 创建持仓比例项目（如果合约已存在，累加价格）
+export async function createPortfolioItem(data, userId) {
   try {
+    // 查询是否已有同合约记录
+    const { data: existing } = await supabase
+      .from('portfolio_items')
+      .select('*')
+      .eq('contract', data.contract)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (existing) {
+      // 累加价格
+      const newPrice = existing.price + parseFloat(data.price)
+      const { data: item, error } = await supabase
+        .from('portfolio_items')
+        .update({ price: newPrice, name: data.name, tag: data.tag || existing.tag })
+        .eq('id', existing.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return item
+    }
+
     const { data: item, error } = await supabase
       .from('portfolio_items')
       .insert([{
         name: data.name,
         contract: data.contract,
         tag: data.tag || '',
-        price: parseFloat(data.price)
+        price: parseFloat(data.price),
+        user_id: userId
       }])
       .select()
       .single()
@@ -411,12 +446,13 @@ export async function createPortfolioItem(data) {
 }
 
 // 删除持仓比例项目
-export async function deletePortfolioItem(id) {
+export async function deletePortfolioItem(id, userId) {
   try {
     const { error } = await supabase
       .from('portfolio_items')
       .delete()
       .eq('id', id)
+      .eq('user_id', userId)
 
     if (error) throw error
     return { status: 'success' }
@@ -427,14 +463,15 @@ export async function deletePortfolioItem(id) {
 }
 
 // 创建或更新交易标签（仅在买入时调用）
-export async function upsertTradeTag(contract, name) {
+export async function upsertTradeTag(contract, name, userId) {
   try {
-    // 查询标签是否存在
+    // 查询标签是否存在（只能查自己的）
     const { data: existingTag } = await supabase
       .from('stock_trade_tags')
       .select('*')
       .eq('contract', contract)
-      .single()
+      .eq('user_id', userId)
+      .maybeSingle()
 
     if (existingTag) {
       // 更新现有标签
@@ -445,6 +482,7 @@ export async function upsertTradeTag(contract, name) {
           updated_at: new Date().toISOString()
         })
         .eq('contract', contract)
+        .eq('user_id', userId)
 
       if (error) throw error
     } else {
@@ -454,7 +492,8 @@ export async function upsertTradeTag(contract, name) {
         .insert([{
           contract: contract,
           name: name,
-          latest_price: 0
+          latest_price: 0,
+          user_id: userId
         }])
 
       if (error) throw error

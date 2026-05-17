@@ -84,6 +84,11 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 持仓比例数据保存到 Supabase 独立表 `portfolio_items`，刷新不丢失。
 左侧合约列表通过 `portfolio_items` 去重派生。
 
+#### 3.5 累加逻辑
+
+新增持仓项目时，如果合约代码已存在，自动将价格累加到现有记录中，而非创建重复记录。
+更新时同步刷新名称和 Tag。
+
 ### 4. 认证
 
 #### 4.1 注册
@@ -147,16 +152,18 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 | trade_type | VARCHAR(10) | 'buy' 或 'sell' |
 | realized_profit | DECIMAL(12, 2) | 累计已实现收益 |
 | single_profit | DECIMAL(12, 2) | 单笔收益（仅卖出） |
+| user_id | INTEGER | 所属用户 ID，关联 app_users(id) |
 
 #### stock_positions — 持仓表
 
-触发器自动维护，每次交易变动全量重算。
+触发器自动维护，每次交易变动全量重算。每个用户每合约一条记录。
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | INTEGER GENERATED ALWAYS AS IDENTITY | 主键 |
-| contract | VARCHAR(20) UNIQUE | 合约代码 |
+| contract | VARCHAR(20) | 合约代码 |
 | name | VARCHAR(100) | 合约名称 |
+| user_id | INTEGER | 所属用户 ID |
 | total_shares | INTEGER | 总持仓（=0 表示已平仓） |
 | avg_cost | DECIMAL(10, 4) | 平均成本 |
 | latest_price | DECIMAL(10, 4) | 最新价格 |
@@ -164,14 +171,19 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 | profit | DECIMAL(12, 2) | 累计收益 |
 | profit_rate | DECIMAL(8, 2) | 收益率 |
 
+唯一约束：`(user_id, contract)`
+
 #### stock_trade_tags — 交易标签表
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | INTEGER GENERATED ALWAYS AS IDENTITY | 主键 |
-| contract | VARCHAR(20) UNIQUE | 合约代码 |
+| contract | VARCHAR(20) | 合约代码 |
 | name | VARCHAR(100) | 合约名称 |
 | latest_price | DECIMAL(10, 4) | 最新价格（预留） |
+| user_id | INTEGER | 所属用户 ID |
+
+唯一约束：`(user_id, contract)`
 
 #### portfolio_items — 持仓比例表
 
@@ -182,6 +194,7 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 | contract | VARCHAR(20) | 合约代码 |
 | tag | VARCHAR(50) | 分类标签（如白酒、科技） |
 | price | DECIMAL(12, 2) | 价格/金额 |
+| user_id | INTEGER | 所属用户 ID |
 
 #### app_users — 用户表
 
@@ -203,16 +216,22 @@ TradeFlow 是一个网格交易记录 + 持仓比例分析工具，帮助用户�
 | change_password | p_user_id, p_old_password, p_new_password | 修改密码 |
 | reset_user_password | p_user_id | 管理员重置密码为 123456 |
 | get_users | p_page, p_page_size | 分页获取用户列表 |
+| recalculate_position | p_contract, p_user_id | 按用户重算指定合约的持仓 |
 
 ### 7. 数据库触发器
 
-- 交易表 `AFTER INSERT OR UPDATE OR DELETE` → `recalculate_position(contract)` 全量重算持仓
+- 交易表 `AFTER INSERT OR UPDATE OR DELETE` → `recalculate_position(contract, user_id)` 按用户全量重算持仓
 - 持仓比例表 `BEFORE UPDATE` → 自动更新 `updated_at`
 - 用户表 `BEFORE UPDATE` → 自动更新 `updated_at`
 
-### 8. SQL 文件清单
+### 9. 数据隔离
 
-| 文件 | 说明 |
-|------|------|
-| `sql/supabase-schema.sql` | 核心表 + 函数 + 触发器 |
-| `sql/supabase-schema-tags.sql` | 标签表 + 持仓比例表 + 用户表 + 认证函数 |
+所有业务表（`stock_trades`、`stock_positions`、`stock_trade_tags`、`portfolio_items`）通过 `user_id` 列实现多用户数据隔离：
+
+- 创建/写入时自动记录当前用户的 ID
+- 查询时只返回当前用户的数据
+- 更新/删除时校验所有权
+- RLS 策略使用 `current_setting('app.current_user_id')` 确保数据库层隔离
+- 前端在每次 API 调用中显式传入 `userId`（从登录态中获取）
+
+该方案支持多用户独立使用，用户 A 看不到用户 B 的任何数据。

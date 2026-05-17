@@ -62,7 +62,8 @@ export const useStockStore = defineStore('stock', {
         t.name.toLowerCase().includes(q) ||
         t.buy_order_no.toLowerCase().includes(q)
       )
-    }
+    },
+    isAdmin: (state) => state.userRole === 'admin'
   },
 
   actions: {
@@ -176,17 +177,13 @@ export const useStockStore = defineStore('stock', {
       this.passwordModalVisible = false
     },
 
-    get isAdmin() {
-      return this.userRole === 'admin'
-    },
-
     async loadData() {
       await Promise.all([this.loadTrades(), this.loadPositions(), this.loadTags()])
     },
 
     async loadTrades() {
       try {
-        this.trades = await api.fetchTrades()
+        this.trades = await api.fetchTrades(this.userId)
       } catch (e) {
         this.showToast(e.message, 'error')
       }
@@ -194,7 +191,7 @@ export const useStockStore = defineStore('stock', {
 
     async loadPositions() {
       try {
-        this.positions = await api.fetchPositions()
+        this.positions = await api.fetchPositions(this.userId)
       } catch (e) {
         this.showToast(e.message, 'error')
       }
@@ -202,7 +199,7 @@ export const useStockStore = defineStore('stock', {
 
     async loadTags() {
       try {
-        this.tags = await api.fetchTradeTags()
+        this.tags = await api.fetchTradeTags(this.userId)
       } catch (e) {
         console.error('加载标签失败:', e)
         // 标签加载失败不影响主流程
@@ -220,11 +217,11 @@ export const useStockStore = defineStore('stock', {
           fee_rate: parseFloat(feeRate) / 100,
           min_fee: minFee || 0.2
         }
-        const result = await api.createTrade(data)
-        
+        const result = await api.createTrade(data, this.userId)
+
         // 只在买入时更新标签
         if (this.tradeType === 'buy' && contract && name) {
-          await api.upsertTradeTag(contract, name)
+          await api.upsertTradeTag(contract, name, this.userId)
           await this.loadTags()
         }
         
@@ -250,7 +247,7 @@ export const useStockStore = defineStore('stock', {
           min_fee: minFee || 0.2,
           buy_order_no: buyOrderNo
         }
-        const result = await api.createTrade(data)
+        const result = await api.createTrade(data, this.userId)
         this.showToast('卖出成功', 'success')
         this.closeSellModal()
         await this.loadData()
@@ -263,7 +260,7 @@ export const useStockStore = defineStore('stock', {
 
     async deleteTrade(id) {
       try {
-        await api.deleteTrade(id)
+        await api.deleteTrade(id, this.userId)
         this.showToast('删除成功', 'success')
         await this.loadData()
       } catch (e) {
@@ -273,7 +270,7 @@ export const useStockStore = defineStore('stock', {
 
     async deleteTag(tagId) {
       try {
-        await api.deleteTradeTag(tagId)
+        await api.deleteTradeTag(tagId, this.userId)
         this.showToast('标签已删除', 'success')
         await this.loadTags()
       } catch (e) {
@@ -292,7 +289,7 @@ export const useStockStore = defineStore('stock', {
 
     async updatePrice(positionId, price) {
       try {
-        await api.updatePositionPrice(positionId, parseFloat(price))
+        await api.updatePositionPrice(positionId, parseFloat(price), this.userId)
         this.showToast('价格更新成功', 'success')
         this.closePriceModal()
         await this.loadPositions()
@@ -303,7 +300,7 @@ export const useStockStore = defineStore('stock', {
 
     async clearPosition(positionId) {
       try {
-        await api.clearPosition(positionId)
+        await api.clearPosition(positionId, this.userId)
         this.showToast('清仓成功', 'success')
         await this.loadData()
       } catch (e) {
@@ -373,7 +370,7 @@ export const useStockStore = defineStore('stock', {
     // Portfolio actions
     async loadPortfolioItems() {
       try {
-        this.portfolioItems = await api.fetchPortfolioItems()
+        this.portfolioItems = await api.fetchPortfolioItems(this.userId)
       } catch (e) {
         console.error('加载持仓项目失败:', e)
       }
@@ -382,7 +379,7 @@ export const useStockStore = defineStore('stock', {
     async createPortfolioItem(form) {
       const { name, contract, tag, price } = form
       try {
-        const item = await api.createPortfolioItem({ name, contract, tag, price })
+        const item = await api.createPortfolioItem({ name, contract, tag, price }, this.userId)
         this.showToast('保存成功', 'success')
         this.closePortfolioModal()
         await this.loadPortfolioItems()
@@ -395,7 +392,7 @@ export const useStockStore = defineStore('stock', {
 
     async deletePortfolioItem(id) {
       try {
-        await api.deletePortfolioItem(id)
+        await api.deletePortfolioItem(id, this.userId)
         this.showToast('已删除', 'success')
         await this.loadPortfolioItems()
       } catch (e) {

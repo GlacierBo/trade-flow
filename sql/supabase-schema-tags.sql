@@ -6,25 +6,41 @@
 -- 4. 交易标签表 (stock_trade_tags)
 CREATE TABLE IF NOT EXISTS stock_trade_tags (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    contract VARCHAR(20) UNIQUE NOT NULL,
+    contract VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
     latest_price DECIMAL(10, 4) DEFAULT 0,
+    user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, contract)
 );
+
+-- 迁移：为旧表添加 user_id 列，更换唯一约束
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'stock_trade_tags' AND column_name = 'user_id'
+    ) THEN
+        ALTER TABLE stock_trade_tags ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1 REFERENCES app_users(id);
+        ALTER TABLE stock_trade_tags DROP CONSTRAINT IF EXISTS stock_trade_tags_contract_key;
+        ALTER TABLE stock_trade_tags DROP CONSTRAINT IF EXISTS stock_trade_tags_user_id_contract_key;
+    END IF;
+END $$;
 
 -- 索引优化
 CREATE INDEX IF NOT EXISTS idx_stock_trade_tags_contract ON stock_trade_tags(contract);
+CREATE INDEX IF NOT EXISTS idx_stock_trade_tags_user_id ON stock_trade_tags(user_id);
 
 -- 启用 RLS
 ALTER TABLE stock_trade_tags ENABLE ROW LEVEL SECURITY;
 
--- 创建策略（允许所有操作）
-DROP POLICY IF EXISTS "Allow all operations on stock_trade_tags" ON stock_trade_tags;
-CREATE POLICY "Allow all operations on stock_trade_tags" ON stock_trade_tags
+-- 创建策略（按用户隔离）
+DROP POLICY IF EXISTS "User isolation on stock_trade_tags" ON stock_trade_tags;
+CREATE POLICY "User isolation on stock_trade_tags" ON stock_trade_tags
     FOR ALL
-    USING (true)
-    WITH CHECK (true);
+    USING (user_id = current_setting('app.current_user_id', true)::INTEGER)
+    WITH CHECK (user_id = current_setting('app.current_user_id', true)::INTEGER);
 
 -- 触发器：自动更新 updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -48,23 +64,36 @@ CREATE TABLE IF NOT EXISTS portfolio_items (
     contract VARCHAR(20) NOT NULL,
     tag VARCHAR(50) DEFAULT '',
     price DECIMAL(12, 2) NOT NULL DEFAULT 0,
+    user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 迁移：为旧表添加 user_id 列
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'portfolio_items' AND column_name = 'user_id'
+    ) THEN
+        ALTER TABLE portfolio_items ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1 REFERENCES app_users(id);
+    END IF;
+END $$;
+
 -- 索引优化
 CREATE INDEX IF NOT EXISTS idx_portfolio_items_tag ON portfolio_items(tag);
 CREATE INDEX IF NOT EXISTS idx_portfolio_items_contract ON portfolio_items(contract);
+CREATE INDEX IF NOT EXISTS idx_portfolio_items_user_id ON portfolio_items(user_id);
 
 -- 启用 RLS
 ALTER TABLE portfolio_items ENABLE ROW LEVEL SECURITY;
 
--- 创建策略（允许所有操作）
-DROP POLICY IF EXISTS "Allow all operations on portfolio_items" ON portfolio_items;
-CREATE POLICY "Allow all operations on portfolio_items" ON portfolio_items
+-- 创建策略（按用户隔离）
+DROP POLICY IF EXISTS "User isolation on portfolio_items" ON portfolio_items;
+CREATE POLICY "User isolation on portfolio_items" ON portfolio_items
     FOR ALL
-    USING (true)
-    WITH CHECK (true);
+    USING (user_id = current_setting('app.current_user_id', true)::INTEGER)
+    WITH CHECK (user_id = current_setting('app.current_user_id', true)::INTEGER);
 
 -- 触发器：自动更新 updated_at
 DROP TRIGGER IF EXISTS trg_portfolio_items_updated_at ON portfolio_items;
@@ -191,7 +220,7 @@ BEGIN
         RETURN FALSE;
     END IF;
     v_salt := substring(encode(gen_random_bytes(16), 'hex') from 1 for 16);
-    v_hashed := md5(v_new_password || v_salt);
+    v_hashed := md5(p_new_password || v_salt);
     UPDATE app_users SET password = v_hashed, salt = v_salt, updated_at = NOW()
     WHERE id = p_user_id;
     RETURN TRUE;
@@ -242,3 +271,18 @@ INSERT INTO app_users (username, password, salt, role) VALUES
     ('admin', md5('admin' || 'a1b2c3d4e5f6g7h8'), 'a1b2c3d4e5f6g7h8', 'admin'),
     ('user001', md5('123456' || 'u1u2u3u4u5u6u7u8'), 'u1u2u3u4u5u6u7u8', 'user')
 ON CONFLICT (username) DO NOTHING;
+
+-- ============================================
+-- 数据迁移：为现有数据回填 user_id
+-- 在给业务表加完 user_id 列后执行
+-- ============================================
+
+-- ALTER TABLE stock_trades ADD COLUMN user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1;
+-- ALTER TABLE stock_positions ADD COLUMN user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1;
+-- ALTER TABLE stock_trade_tags ADD COLUMN user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1;
+-- ALTER TABLE portfolio_items ADD COLUMN user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1;
+
+-- UPDATE stock_trades SET user_id = 1 WHERE user_id IS NULL;
+-- UPDATE stock_positions SET user_id = 1 WHERE user_id IS NULL;
+-- UPDATE stock_trade_tags SET user_id = 1 WHERE user_id IS NULL;
+-- UPDATE portfolio_items SET user_id = 1 WHERE user_id IS NULL;

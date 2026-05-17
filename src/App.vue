@@ -69,13 +69,6 @@ const handleLogout = () => {
         >
           退出
         </button>
-        <button
-          v-if="store.activeTab === 'trade'"
-          @click="store.openTradeModal()"
-          class="bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white px-5 py-2 rounded-xl font-black shadow-lg shadow-blue-500/30 transition-all active:scale-95 text-sm"
-        >
-          + 新增交易
-        </button>
       </div>
     </header>
 
@@ -104,15 +97,18 @@ const handleLogout = () => {
       <div class="lg:col-span-6">
         <div class="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
           <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-            <h2 class="text-lg font-black text-blue-400">交易明细</h2>
-            <div class="relative">
-              <input
-                v-model="store.searchQuery"
-                type="text"
-                placeholder="搜索合约或单号..."
-                class="bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500 w-48 text-gray-100 placeholder-gray-500"
-              >
-            </div>
+            <h2 class="text-lg font-black text-blue-400">交易明细<button
+                @click="store.openTradeModal()"
+                class="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white font-black text-sm leading-none shadow-lg shadow-blue-500/30 transition-all active:scale-95"
+              >+</button></h2>
+              <div class="relative">
+                <input
+                  v-model="store.searchQuery"
+                  type="text"
+                  placeholder="搜索合约或单号..."
+                  class="bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500 w-48 text-gray-100 placeholder-gray-500"
+                >
+              </div>
           </div>
           <TradeList />
         </div>

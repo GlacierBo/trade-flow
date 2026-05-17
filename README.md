@@ -24,6 +24,7 @@
 - **持仓比例分析** — 按 Tag 分组计算各资产占比，进度条配色，金额显隐切换
 - **全量重算机制** — 每次交易变动自动重算持仓和盈亏，数据准确
 - **用户认证** — 用户名注册/登录，MD5+盐值加密，管理员可管理用户、重置密码
+- **数据隔离** — 多用户独立数据，每个用户只能看到和操作自己的交易、持仓、标签和持仓比例数据
 
 ## Tech Stack
 
@@ -91,11 +92,13 @@ sql/
 
 PostgreSQL tables managed via Supabase. Key design:
 
-- **`stock_trades`** — All buy/sell records linked by `buy_order_no`
-- **`stock_positions`** — Auto-calculated view per contract, recalculated by DB trigger on every trade change
-- **`stock_trade_tags`** — Quick-trade presets, auto-created on buy
-- **`portfolio_items`** — Portfolio ratio data source (name, contract, tag, price)
+- **`stock_trades`** — All buy/sell records linked by `buy_order_no`, isolated by `user_id`
+- **`stock_positions`** — Auto-calculated view per user per contract, recalculated by DB trigger on every trade change
+- **`stock_trade_tags`** — Quick-trade presets, auto-created on buy, isolated by `user_id`
+- **`portfolio_items`** — Portfolio ratio data source (name, contract, tag, price), isolated by `user_id`. Same contract auto-accumulates price instead of duplicate rows.
 - **`app_users`** — User accounts with MD5+salt password hashing, role-based access (user/admin)
+
+All business tables use `user_id` for multi-tenant data isolation — each user only sees their own data.
 
 ## Deployment
 

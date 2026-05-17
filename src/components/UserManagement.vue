@@ -30,7 +30,7 @@ async function handleReset(userId) {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
+  <div>
     <div class="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden">
       <div class="p-4 border-b border-gray-700/50">
         <h2 class="text-lg font-black text-blue-400">用户管理</h2>
@@ -45,7 +45,7 @@ async function handleReset(userId) {
           <thead>
             <tr class="text-gray-500 text-xs uppercase tracking-wider border-b border-gray-700/50">
               <th class="text-left py-3 px-2 font-bold">ID</th>
-              <th class="text-left py-3 px-2 font-bold">邮箱</th>
+              <th class="text-left py-3 px-2 font-bold">用户名</th>
               <th class="text-left py-3 px-2 font-bold">角色</th>
               <th class="text-left py-3 px-2 font-bold">注册时间</th>
               <th class="text-right py-3 px-2 font-bold">操作</th>
@@ -55,7 +55,7 @@ async function handleReset(userId) {
             <tr v-for="u in store.users" :key="u.id" class="hover:bg-gray-700/10 transition-colors">
               <td class="py-3 px-2 text-gray-400 font-mono text-xs">{{ u.id }}</td>
               <td class="py-3 px-2">
-                <span class="text-gray-100 font-bold">{{ u.email }}</span>
+                <span class="text-gray-100 font-bold">{{ u.username }}</span>
               </td>
               <td class="py-3 px-2">
                 <span
