@@ -19,8 +19,8 @@ export const useStockStore = defineStore('stock', {
     usersTotal: 0,
     usersPage: 1,
 
-    // Password change modal
-    passwordModalVisible: false,
+    // Profile modal
+    profileModalVisible: false,
 
     // Navigation
     currentView: 'home',
@@ -176,12 +176,12 @@ export const useStockStore = defineStore('stock', {
       }
     },
 
-    openPasswordModal() {
-      this.passwordModalVisible = true
+    openProfileModal() {
+      this.profileModalVisible = true
     },
 
-    closePasswordModal() {
-      this.passwordModalVisible = false
+    closeProfileModal() {
+      this.profileModalVisible = false
     },
 
     async loadData() {

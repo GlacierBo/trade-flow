@@ -68,20 +68,46 @@ async function handleRegister() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-      <div class="text-center mb-8">
-        <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-2xl shadow-blue-500/30 mb-4">
-          <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <div class="min-h-screen bg-gray-900 flex">
+    <!-- Left: Brand Panel -->
+    <div class="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div class="absolute inset-0 opacity-10">
+        <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500 rounded-full blur-3xl"></div>
+        <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-purple-500 rounded-full blur-3xl"></div>
+      </div>
+      <div class="relative z-10 text-center px-12">
+        <div class="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-r from-blue-500 to-purple-600 rounded-3xl shadow-2xl shadow-blue-500/30 mb-8">
+          <svg class="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
           </svg>
         </div>
-        <h1 class="text-4xl font-black text-white mb-2">TradeFlow</h1>
-        <p class="text-gray-400 text-sm uppercase tracking-widest font-bold">Smart Trading Management</p>
+        <h1 class="text-5xl font-black text-white mb-3 tracking-tight">TradeFlow</h1>
+        <p class="text-blue-400 text-base uppercase tracking-[0.3em] font-bold mb-8">Smart Trading Management</p>
+        <p class="text-gray-400 text-lg leading-relaxed max-w-sm mx-auto">
+          高效管理您的每一笔交易，<br>让投资决策更清晰、更从容。
+        </p>
       </div>
+    </div>
 
-      <div class="bg-gray-800/50 backdrop-blur-xl rounded-2xl border border-gray-700/50 p-8 shadow-2xl">
-        <div class="flex mb-6 bg-gray-700/30 rounded-lg p-1">
+    <!-- Right: Login Form -->
+    <div class="flex-1 flex items-center justify-center p-8">
+      <div class="w-full max-w-md">
+        <!-- Mobile Logo -->
+        <div class="lg:hidden text-center mb-10">
+          <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-2xl shadow-blue-500/30 mb-4">
+            <svg class="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            </svg>
+          </div>
+          <h1 class="text-3xl font-black text-white mb-1">TradeFlow</h1>
+          <p class="text-gray-400 text-xs uppercase tracking-widest font-bold">Smart Trading Management</p>
+        </div>
+
+        <h2 class="text-2xl font-black text-white mb-2">欢迎回来</h2>
+        <p class="text-gray-500 text-sm mb-8">请输入您的账号信息登录系统</p>
+
+        <!-- Tabs -->
+        <div class="flex mb-6 bg-gray-800/50 rounded-lg p-1">
           <button
             @click="tab = 'login'; error = ''"
             :class="['flex-1 py-2 rounded-md text-sm font-black transition-all', tab === 'login' ? 'bg-blue-500 text-white shadow' : 'text-gray-400 hover:text-gray-200']"
@@ -92,10 +118,12 @@ async function handleRegister() {
           >注册</button>
         </div>
 
+        <!-- Error -->
         <div v-if="error" class="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm text-center">
           {{ error }}
         </div>
 
+        <!-- Register Success -->
         <div v-if="generatedPassword" class="mb-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg text-center">
           <p class="text-green-400 text-sm font-bold mb-2">注册成功！</p>
           <p class="text-gray-300 text-xs mb-2">用户名：{{ registeredUsername }}</p>
@@ -110,14 +138,15 @@ async function handleRegister() {
           >前往登录</button>
         </div>
 
-        <form v-else-if="tab === 'login'" @submit.prevent="handleLogin" class="space-y-4">
+        <!-- Login Form -->
+        <form v-else-if="tab === 'login'" @submit.prevent="handleLogin" class="space-y-5">
           <div>
             <label class="block text-sm font-bold text-gray-300 mb-2">用户名</label>
             <input
               v-model="username"
               type="text"
               placeholder="字母和数字"
-              class="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              class="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
               :disabled="loading"
               required
             >
@@ -128,7 +157,7 @@ async function handleRegister() {
               v-model="password"
               type="password"
               placeholder="请输入密码"
-              class="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              class="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
               :disabled="loading"
               required
             >
@@ -136,7 +165,7 @@ async function handleRegister() {
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 disabled:from-gray-600 disabled:to-gray-500 text-white font-black py-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:cursor-not-allowed disabled:shadow-none mt-2"
+            class="w-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 disabled:from-gray-600 disabled:to-gray-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:cursor-not-allowed disabled:shadow-none mt-2"
           >
             <span v-if="!loading">登 录</span>
             <span v-else class="flex items-center justify-center">
@@ -149,14 +178,15 @@ async function handleRegister() {
           </button>
         </form>
 
-        <form v-else @submit.prevent="handleRegister" class="space-y-4">
+        <!-- Register Form -->
+        <form v-else @submit.prevent="handleRegister" class="space-y-5">
           <div>
             <label class="block text-sm font-bold text-gray-300 mb-2">用户名</label>
             <input
               v-model="username"
               type="text"
               placeholder="字母和数字，不支持特殊符号"
-              class="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+              class="w-full bg-gray-800/50 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
               :disabled="loading"
               required
             >
@@ -165,7 +195,7 @@ async function handleRegister() {
           <button
             type="submit"
             :disabled="loading"
-            class="w-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 disabled:from-gray-600 disabled:to-gray-500 text-white font-black py-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:cursor-not-allowed disabled:shadow-none mt-2"
+            class="w-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 disabled:from-gray-600 disabled:to-gray-500 text-white font-black py-3.5 rounded-xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:cursor-not-allowed disabled:shadow-none mt-2"
           >
             <span v-if="!loading">注 册</span>
             <span v-else class="flex items-center justify-center">
@@ -177,10 +207,6 @@ async function handleRegister() {
             </span>
           </button>
         </form>
-      </div>
-
-      <div class="text-center mt-6">
-        <p class="text-xs text-gray-600">© 2024 TradeFlow. All rights reserved.</p>
       </div>
     </div>
   </div>
