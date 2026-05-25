@@ -11,6 +11,9 @@ export const useStockStore = defineStore('stock', {
     isAuthenticated: false,
     username: '',
 
+    // Navigation
+    currentView: 'home',
+
     // Trade modal
     tradeModalVisible: false,
     tradeType: 'buy',
@@ -65,6 +68,10 @@ export const useStockStore = defineStore('stock', {
       this.username = ''
       localStorage.removeItem('auth_token')
       localStorage.removeItem('username')
+    },
+
+    setView(view) {
+      this.currentView = view
     },
 
     checkAuth() {
@@ -209,8 +216,9 @@ export const useStockStore = defineStore('stock', {
 
     executeConfirm() {
       if (this.confirmCallback) {
-        this.confirmCallback()
+        const callback = this.confirmCallback
         this.closeConfirm()
+        callback()
       }
     },
 
