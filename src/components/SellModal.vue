@@ -7,6 +7,7 @@ const store = useStockStore()
 const price = ref('')
 const shares = ref('')
 const errorMsg = ref('')
+const isSubmitting = ref(false) // 防止重复提交
 
 watch(() => store.sellModalVisible, (v) => {
   if (v) {
@@ -17,6 +18,11 @@ watch(() => store.sellModalVisible, (v) => {
 })
 
 async function submit() {
+  // 防止重复提交
+  if (isSubmitting.value) {
+    return
+  }
+  
   errorMsg.value = ''
 
   const p = parseFloat(price.value)
@@ -35,13 +41,18 @@ async function submit() {
     return
   }
 
-  await store.sellFromBuy({
-    price: price.value,
-    shares: shares.value,
-    feeRate: '0.02',
-    minFee: 0.2,
-    buyOrderNo: store.sellTarget.buyOrderNo
-  })
+  try {
+    isSubmitting.value = true
+    await store.sellFromBuy({
+      price: price.value,
+      shares: shares.value,
+      feeRate: '0.02',
+      minFee: 0.2,
+      buyOrderNo: store.sellTarget.buyOrderNo
+    })
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -49,7 +60,6 @@ async function submit() {
   <div
     v-if="store.sellModalVisible && store.sellTarget"
     class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="store.closeSellModal()"
   >
     <div class="bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-700 animate-fadeIn">
       <h3 class="text-lg font-black text-red-400 mb-4">卖出操作</h3>
@@ -90,8 +100,16 @@ async function submit() {
         >取消</button>
         <button
           @click="submit"
-          class="flex-1 bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 py-2.5 rounded-xl text-white font-black text-sm shadow-lg"
-        >确认卖出</button>
+          :disabled="isSubmitting"
+          :class="[
+            'flex-1 py-2.5 rounded-xl text-white font-black text-sm shadow-lg transition',
+            isSubmitting 
+              ? 'bg-gray-500 cursor-not-allowed opacity-50' 
+              : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400'
+          ]"
+        >
+          {{ isSubmitting ? '提交中...' : '确认卖出' }}
+        </button>
       </div>
     </div>
   </div>

@@ -10,37 +10,40 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // 获取所有交易记录（按买入单号分组）
-export async function fetchTrades() {
+export async function fetchTrades(userId) {
   try {
-    // 获取所有买入记录
-    const { data: buyTrades, error: buyError } = await supabase
+    // 一次性获取所有交易记录
+    const { data: allTrades, error } = await supabase
       .from('stock_trades')
       .select('*')
-      .eq('trade_type', 'buy')
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
 
-    if (buyError) throw buyError
+    if (error) throw error
 
-    // 为每个买入记录查询关联的卖出记录
-    const tradesWithSells = await Promise.all(
-      buyTrades.map(async (buy) => {
-        const { data: sells, error: sellError } = await supabase
-          .from('stock_trades')
-          .select('*')
-          .eq('buy_order_no', buy.buy_order_no)
-          .eq('trade_type', 'sell')
-          .order('created_at', { ascending: true })
+    // 在 JS 中分组
+    const buys = []
+    const sellMap = {}
 
-        if (sellError) throw sellError
-
-        return {
-          ...buy,
-          sells: sells || []
+    for (const trade of allTrades) {
+      if (trade.trade_type === 'buy') {
+        buys.push({ ...trade, sells: [] })
+      } else {
+        if (!sellMap[trade.buy_order_no]) {
+          sellMap[trade.buy_order_no] = []
         }
-      })
-    )
+        sellMap[trade.buy_order_no].push(trade)
+      }
+    }
 
-    return tradesWithSells
+    // 按 created_at 升序排列每个 buy 的 sells
+    for (const buy of buys) {
+      const sells = sellMap[buy.buy_order_no] || []
+      sells.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+      buy.sells = sells
+    }
+
+    return buys
   } catch (error) {
     console.error('加载交易记录失败:', error)
     throw new Error('加载交易记录失败')
@@ -48,7 +51,7 @@ export async function fetchTrades() {
 }
 
 // 创建交易记录
-export async function createTrade(data) {
+export async function createTrade(data, userId) {
   try {
     const isBuy = data.shares > 0
     
@@ -85,7 +88,8 @@ export async function createTrade(data) {
           trade_type: 'buy',
           trade_date: tradeDate,
           realized_profit: 0,
-          single_profit: 0
+          single_profit: 0,
+          user_id: userId
         }])
         .select()
         .single()
@@ -99,12 +103,13 @@ export async function createTrade(data) {
         throw new Error('卖出操作必须提供买入单号')
       }
 
-      // 查询对应的买入记录
+      // 查询对应的买入记录（只能查询自己的）
       const { data: buyRecord, error: buyError } = await supabase
         .from('stock_trades')
         .select('*')
         .eq('buy_order_no', data.buy_order_no)
         .eq('trade_type', 'buy')
+        .eq('user_id', userId)
         .single()
 
       if (buyError || !buyRecord) {
@@ -141,7 +146,8 @@ export async function createTrade(data) {
           trade_type: 'sell',
           trade_date: tradeDate,
           realized_profit: 0,
-          single_profit: singleProfit
+          single_profit: singleProfit,
+          user_id: userId
         }])
         .select()
         .single()
@@ -168,13 +174,14 @@ export async function createTrade(data) {
 }
 
 // 删除交易记录
-export async function deleteTrade(id) {
+export async function deleteTrade(id, userId) {
   try {
-    // 先查询交易记录
+    // 先查询交易记录（只能删除自己的）
     const { data: trade, error: fetchError } = await supabase
       .from('stock_trades')
       .select('*')
       .eq('id', id)
+      .eq('user_id', userId)
       .single()
 
     if (fetchError || !trade) {
@@ -246,12 +253,12 @@ export async function deleteTrade(id) {
 }
 
 // 获取所有持仓
-export async function fetchPositions() {
+export async function fetchPositions(userId) {
   try {
     const { data, error } = await supabase
       .from('stock_positions')
       .select('*')
-      .gt('total_shares', 0)
+      .eq('user_id', userId)
       .order('updated_at', { ascending: false })
 
     if (error) throw error
@@ -264,13 +271,14 @@ export async function fetchPositions() {
 }
 
 // 更新持仓最新价格
-export async function updatePositionPrice(positionId, price) {
+export async function updatePositionPrice(positionId, price, userId) {
   try {
-    // 先获取持仓信息
+    // 先获取持仓信息（只能更新自己的）
     const { data: position, error: fetchError } = await supabase
       .from('stock_positions')
       .select('*')
       .eq('id', positionId)
+      .eq('user_id', userId)
       .single()
 
     if (fetchError || !position) {
@@ -304,24 +312,26 @@ export async function updatePositionPrice(positionId, price) {
 }
 
 // 清仓
-export async function clearPosition(positionId) {
+export async function clearPosition(positionId, userId) {
   try {
-    // 获取持仓信息
+    // 获取持仓信息（只能清自己的仓）
     const { data: position, error: fetchError } = await supabase
       .from('stock_positions')
       .select('*')
       .eq('id', positionId)
+      .eq('user_id', userId)
       .single()
 
     if (fetchError || !position) {
       throw new Error('持仓不存在')
     }
 
-    // 删除该合约的所有交易记录
+    // 删除该合约的所有交易记录（只能删自己的）
     const { error: deleteError } = await supabase
       .from('stock_trades')
       .delete()
       .eq('contract', position.contract)
+      .eq('user_id', userId)
 
     if (deleteError) throw deleteError
 
@@ -330,5 +340,242 @@ export async function clearPosition(positionId) {
   } catch (error) {
     console.error('清仓失败:', error)
     throw new Error('清仓失败')
+  }
+}
+
+// 获取所有交易标签
+export async function fetchTradeTags(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('stock_trade_tags')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false })
+
+    if (error) throw error
+
+    return data || []
+  } catch (error) {
+    console.error('加载交易标签失败:', error)
+    throw new Error('加载交易标签失败')
+  }
+}
+
+// 删除交易标签
+export async function deleteTradeTag(tagId, userId) {
+  try {
+    const { error } = await supabase
+      .from('stock_trade_tags')
+      .delete()
+      .eq('id', tagId)
+      .eq('user_id', userId)
+
+    if (error) throw error
+
+    return { status: 'success' }
+  } catch (error) {
+    console.error('删除标签失败:', error)
+    throw new Error('删除标签失败')
+  }
+}
+
+// ============================================
+// 持仓比例计算 API
+// ============================================
+
+// 获取所有持仓比例项目
+export async function fetchPortfolioItems(userId) {
+  try {
+    const { data, error } = await supabase
+      .from('portfolio_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error('加载持仓项目失败:', error)
+    throw new Error('加载持仓项目失败')
+  }
+}
+
+// 创建持仓比例项目（如果合约已存在，累加价格）
+export async function createPortfolioItem(data, userId) {
+  try {
+    // 查询是否已有同合约记录
+    const { data: existing } = await supabase
+      .from('portfolio_items')
+      .select('*')
+      .eq('contract', data.contract)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (existing) {
+      // 累加价格
+      const newPrice = existing.price + parseFloat(data.price)
+      const { data: item, error } = await supabase
+        .from('portfolio_items')
+        .update({ price: newPrice, name: data.name, tag: data.tag || existing.tag })
+        .eq('id', existing.id)
+        .select()
+        .single()
+
+      if (error) throw error
+      return item
+    }
+
+    const { data: item, error } = await supabase
+      .from('portfolio_items')
+      .insert([{
+        name: data.name,
+        contract: data.contract,
+        tag: data.tag || '',
+        price: parseFloat(data.price),
+        user_id: userId
+      }])
+      .select()
+      .single()
+
+    if (error) throw error
+    return item
+  } catch (error) {
+    console.error('创建持仓项目失败:', error)
+    throw new Error(error.message || '保存失败')
+  }
+}
+
+// 删除持仓比例项目
+export async function deletePortfolioItem(id, userId) {
+  try {
+    const { error } = await supabase
+      .from('portfolio_items')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId)
+
+    if (error) throw error
+    return { status: 'success' }
+  } catch (error) {
+    console.error('删除持仓项目失败:', error)
+    throw new Error(error.message || '删除失败')
+  }
+}
+
+// 创建或更新交易标签（仅在买入时调用）
+export async function upsertTradeTag(contract, name, userId) {
+  try {
+    // 查询标签是否存在（只能查自己的）
+    const { data: existingTag } = await supabase
+      .from('stock_trade_tags')
+      .select('*')
+      .eq('contract', contract)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (existingTag) {
+      // 更新现有标签
+      const { error } = await supabase
+        .from('stock_trade_tags')
+        .update({
+          name: name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('contract', contract)
+        .eq('user_id', userId)
+
+      if (error) throw error
+    } else {
+      // 创建新标签
+      const { error } = await supabase
+        .from('stock_trade_tags')
+        .insert([{
+          contract: contract,
+          name: name,
+          latest_price: 0,
+          user_id: userId
+        }])
+
+      if (error) throw error
+    }
+
+    return { status: 'success' }
+  } catch (error) {
+    console.error('更新标签失败:', error)
+    // 标签更新失败不影响主流程，静默失败
+    return { status: 'error', message: error.message }
+  }
+}
+
+// ============================================
+// 用户认证 API
+// ============================================
+
+export async function verifyLogin(username, password) {
+  try {
+    const { data, error } = await supabase.rpc('verify_user', {
+      p_username: username,
+      p_password: password
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('登录验证失败:', error)
+    throw new Error('登录验证失败')
+  }
+}
+
+export async function registerUser(username) {
+  try {
+    const { data, error } = await supabase.rpc('register_user', {
+      p_username: username
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('注册失败:', error)
+    throw new Error(error.message || '注册失败')
+  }
+}
+
+export async function changePassword(userId, oldPassword, newPassword) {
+  try {
+    const { data, error } = await supabase.rpc('change_password', {
+      p_user_id: userId,
+      p_old_password: oldPassword,
+      p_new_password: newPassword
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('修改密码失败:', error)
+    throw new Error(error.message || '修改密码失败')
+  }
+}
+
+export async function resetUserPassword(userId) {
+  try {
+    const { data, error } = await supabase.rpc('reset_user_password', {
+      p_user_id: userId
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('重置密码失败:', error)
+    throw new Error(error.message || '重置密码失败')
+  }
+}
+
+export async function fetchUsers(page = 1, pageSize = 20) {
+  try {
+    const { data, error } = await supabase.rpc('get_users', {
+      p_page: page,
+      p_page_size: pageSize
+    })
+    if (error) throw error
+    return data
+  } catch (error) {
+    console.error('获取用户列表失败:', error)
+    throw new Error('获取用户列表失败')
   }
 }

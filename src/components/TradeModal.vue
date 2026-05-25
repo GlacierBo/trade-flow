@@ -9,15 +9,27 @@ const name = ref('')
 const price = ref('')
 const shares = ref('')
 const feeRate = ref('0.02')
+const isSubmitting = ref(false) // 防止重复提交
 
 watch(() => store.tradeModalVisible, (v) => {
   if (v) {
-    contract.value = ''
-    name.value = ''
-    price.value = ''
-    shares.value = ''
-    feeRate.value = '0.02'
-    store.setTradeType('buy')
+    // 检查是否有预填充数据
+    if (store.tradePresetData) {
+      contract.value = store.tradePresetData.contract || ''
+      name.value = store.tradePresetData.name || ''
+      price.value = '' // 不填充价格，用户需手动输入
+      shares.value = ''
+      feeRate.value = '0.02'
+      store.setTradeType('buy')
+    } else {
+      // 没有预填充数据，重置表单
+      contract.value = ''
+      name.value = ''
+      price.value = ''
+      shares.value = ''
+      feeRate.value = '0.02'
+      store.setTradeType('buy')
+    }
   }
 })
 
@@ -38,18 +50,29 @@ const net = computed(() => {
 })
 
 async function submit() {
+  // 防止重复提交
+  if (isSubmitting.value) {
+    return
+  }
+  
   if (!contract.value.trim() || !name.value.trim() || !price.value || !shares.value) {
     store.showToast('请填写完整信息', 'error')
     return
   }
-  await store.createTrade({
-    contract: contract.value.trim(),
-    name: name.value.trim(),
-    price: price.value,
-    shares: shares.value,
-    feeRate: feeRate.value,
-    minFee: 0.2
-  })
+  
+  try {
+    isSubmitting.value = true
+    await store.createTrade({
+      contract: contract.value.trim(),
+      name: name.value.trim(),
+      price: price.value,
+      shares: shares.value,
+      feeRate: feeRate.value,
+      minFee: 0.2
+    })
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -57,7 +80,6 @@ async function submit() {
   <div
     v-if="store.tradeModalVisible"
     class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="store.closeTradeModal()"
   >
     <div class="bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-700 animate-fadeIn">
       <h3 class="text-lg font-black text-blue-400 mb-4">新增交易</h3>
@@ -149,8 +171,16 @@ async function submit() {
         >取消</button>
         <button
           @click="submit"
-          class="flex-1 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 py-2.5 rounded-xl text-white font-black text-sm shadow-lg shadow-blue-500/30"
-        >确认交易</button>
+          :disabled="isSubmitting"
+          :class="[
+            'flex-1 py-2.5 rounded-xl text-white font-black text-sm shadow-lg transition',
+            isSubmitting 
+              ? 'bg-gray-500 cursor-not-allowed opacity-50' 
+              : 'bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 shadow-blue-500/30'
+          ]"
+        >
+          {{ isSubmitting ? '提交中...' : '确认交易' }}
+        </button>
       </div>
     </div>
   </div>

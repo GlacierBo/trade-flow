@@ -16,22 +16,36 @@ CREATE TABLE IF NOT EXISTS stock_trades (
     net_amount DECIMAL(12, 2) NOT NULL,
     trade_type VARCHAR(10) NOT NULL CHECK (trade_type IN ('buy', 'sell')),
     trade_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     realized_profit DECIMAL(12, 2) DEFAULT 0,
     single_profit DECIMAL(12, 2) DEFAULT 0
 );
 
+-- 迁移：为旧表添加 user_id 列
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'stock_trades' AND column_name = 'user_id'
+    ) THEN
+        ALTER TABLE stock_trades ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1 REFERENCES app_users(id);
+    END IF;
+END $$;
+
 -- 索引优化
-CREATE INDEX idx_stock_trades_contract ON stock_trades(contract);
-CREATE INDEX idx_stock_trades_buy_order_no ON stock_trades(buy_order_no);
-CREATE INDEX idx_stock_trades_trade_type ON stock_trades(trade_type);
-CREATE INDEX idx_stock_trades_created_at ON stock_trades(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_contract ON stock_trades(contract);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_buy_order_no ON stock_trades(buy_order_no);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_trade_type ON stock_trades(trade_type);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_created_at ON stock_trades(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stock_trades_user_id ON stock_trades(user_id);
 
 -- 2. 持仓表 (stock_positions)
 CREATE TABLE IF NOT EXISTS stock_positions (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    contract VARCHAR(20) UNIQUE NOT NULL,
+    contract VARCHAR(20) NOT NULL,
     name VARCHAR(100) NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES app_users(id) DEFAULT 1,
     total_shares INTEGER NOT NULL DEFAULT 0,
     avg_cost DECIMAL(10, 4) DEFAULT 0,
     latest_price DECIMAL(10, 4) DEFAULT 0,
@@ -41,8 +55,21 @@ CREATE TABLE IF NOT EXISTS stock_positions (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 迁移：为旧表添加 user_id 列，删除旧唯一约束
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'stock_positions' AND column_name = 'user_id'
+    ) THEN
+        ALTER TABLE stock_positions ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1 REFERENCES app_users(id);
+        ALTER TABLE stock_positions DROP CONSTRAINT IF EXISTS stock_positions_contract_key;
+    END IF;
+END $$;
+
 -- 索引优化
-CREATE INDEX idx_stock_positions_contract ON stock_positions(contract);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stock_positions_user_contract ON stock_positions(user_id, contract);
+CREATE INDEX IF NOT EXISTS idx_stock_positions_user_id ON stock_positions(user_id);
 
 -- 3. 流水号计数器表 (daily_serial_counters)
 CREATE TABLE IF NOT EXISTS daily_serial_counters (
@@ -52,7 +79,7 @@ CREATE TABLE IF NOT EXISTS daily_serial_counters (
 );
 
 -- 索引优化
-CREATE INDEX idx_daily_serial_counters_date ON daily_serial_counters(counter_date);
+CREATE INDEX IF NOT EXISTS idx_daily_serial_counters_date ON daily_serial_counters(counter_date);
 
 -- ============================================
 -- 行级安全策略 (RLS)
@@ -63,18 +90,20 @@ ALTER TABLE stock_trades ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_positions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_serial_counters ENABLE ROW LEVEL SECURITY;
 
--- 创建策略（允许所有操作，因为是个人应用）
--- 如果需要用户认证，可以改为: USING (auth.uid() = user_id)
-CREATE POLICY "Allow all operations on stock_trades" ON stock_trades
+-- 创建策略（按用户隔离数据）
+DROP POLICY IF EXISTS "User isolation on stock_trades" ON stock_trades;
+CREATE POLICY "User isolation on stock_trades" ON stock_trades
     FOR ALL
-    USING (true)
-    WITH CHECK (true);
+    USING (user_id = current_setting('app.current_user_id', true)::INTEGER)
+    WITH CHECK (user_id = current_setting('app.current_user_id', true)::INTEGER);
 
-CREATE POLICY "Allow all operations on stock_positions" ON stock_positions
+DROP POLICY IF EXISTS "User isolation on stock_positions" ON stock_positions;
+CREATE POLICY "User isolation on stock_positions" ON stock_positions
     FOR ALL
-    USING (true)
-    WITH CHECK (true);
+    USING (user_id = current_setting('app.current_user_id', true)::INTEGER)
+    WITH CHECK (user_id = current_setting('app.current_user_id', true)::INTEGER);
 
+DROP POLICY IF EXISTS "Allow all operations on daily_serial_counters" ON daily_serial_counters;
 CREATE POLICY "Allow all operations on daily_serial_counters" ON daily_serial_counters
     FOR ALL
     USING (true)
@@ -122,8 +151,11 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 函数2: 重新计算持仓（全量重算）
-CREATE OR REPLACE FUNCTION recalculate_position(p_contract VARCHAR)
+-- 函数2: 重新计算持仓（全量重算，按用户隔离）
+DROP TRIGGER IF EXISTS trg_stock_trades_recalc ON stock_trades;
+DROP FUNCTION IF EXISTS recalculate_position(VARCHAR) CASCADE;
+
+CREATE OR REPLACE FUNCTION recalculate_position(p_contract VARCHAR, p_user_id INTEGER DEFAULT 1)
 RETURNS VOID AS $$
 DECLARE
     v_total_buy_shares INTEGER := 0;
@@ -143,67 +175,83 @@ BEGIN
     -- 获取合约名称（从第一条交易记录）
     SELECT name INTO v_name
     FROM stock_trades
-    WHERE contract = p_contract
+    WHERE contract = p_contract AND user_id = p_user_id
     LIMIT 1;
-    
+
+    -- 如果没有交易记录了（清仓全部删除），直接删除持仓记录
+    IF v_name IS NULL THEN
+        DELETE FROM stock_positions WHERE contract = p_contract AND user_id = p_user_id;
+        RETURN;
+    END IF;
+
     -- 计算总买入
     SELECT COALESCE(SUM(shares), 0), COALESCE(SUM(amount), 0)
     INTO v_total_buy_shares, v_total_buy_amount
     FROM stock_trades
-    WHERE contract = p_contract AND trade_type = 'buy';
-    
+    WHERE contract = p_contract AND trade_type = 'buy' AND user_id = p_user_id;
+
     -- 计算总卖出（取绝对值）
     SELECT COALESCE(SUM(ABS(shares)), 0), COALESCE(SUM(ABS(amount)), 0)
     INTO v_total_sell_shares, v_total_sell_amount
     FROM stock_trades
-    WHERE contract = p_contract AND trade_type = 'sell';
-    
+    WHERE contract = p_contract AND trade_type = 'sell' AND user_id = p_user_id;
+
     -- 计算持仓数量
     v_position_shares := v_total_buy_shares - v_total_sell_shares;
-    
-    -- 如果持仓为零或负数，删除持仓记录
-    IF v_position_shares <= 0 THEN
-        DELETE FROM stock_positions WHERE contract = p_contract;
-        RETURN;
-    END IF;
-    
-    -- 计算净成本和平均成本
-    v_net_cost := v_total_buy_amount - v_total_sell_amount;
-    v_avg_cost := v_net_cost / v_position_shares;
-    
-    -- 获取最新价格（最后一笔交易的价格）
-    SELECT price INTO v_latest_price
-    FROM stock_trades
-    WHERE contract = p_contract
-    ORDER BY created_at DESC
-    LIMIT 1;
-    
-    -- 计算市值
-    v_market_value := v_position_shares * v_latest_price;
-    
+
     -- 计算已实现收益（所有卖出的 single_profit 汇总）
     SELECT COALESCE(SUM(single_profit), 0)
     INTO v_total_profit
     FROM stock_trades
-    WHERE contract = p_contract AND trade_type = 'sell';
-    
+    WHERE contract = p_contract AND trade_type = 'sell' AND user_id = p_user_id;
+
+    -- 如果持仓为零或负数，保留记录用于查看收益，标记为已平仓
+    IF v_position_shares <= 0 THEN
+        INSERT INTO stock_positions (contract, name, user_id, total_shares, avg_cost, latest_price, market_value, profit, profit_rate, updated_at)
+        VALUES (p_contract, v_name, p_user_id, 0, 0, 0, 0, v_total_profit, 0, NOW())
+        ON CONFLICT (user_id, contract) DO UPDATE SET
+            name = EXCLUDED.name,
+            total_shares = 0,
+            avg_cost = 0,
+            latest_price = 0,
+            market_value = 0,
+            profit = EXCLUDED.profit,
+            profit_rate = 0,
+            updated_at = NOW();
+        RETURN;
+    END IF;
+
+    -- 计算净成本和平均成本
+    v_net_cost := v_total_buy_amount - v_total_sell_amount;
+    v_avg_cost := v_net_cost / v_position_shares;
+
+    -- 获取最新价格（最后一笔交易的价格）
+    SELECT price INTO v_latest_price
+    FROM stock_trades
+    WHERE contract = p_contract AND user_id = p_user_id
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    -- 计算市值
+    v_market_value := v_position_shares * v_latest_price;
+
     -- 计算未实现盈亏和收益率
     v_unrealized_profit := (v_latest_price - v_avg_cost) * v_position_shares;
-    v_profit_rate := CASE 
+    v_profit_rate := CASE
         WHEN v_net_cost > 0 THEN (v_unrealized_profit / v_net_cost * 100)
         ELSE 0
     END;
-    
+
     -- 更新或创建持仓记录
     INSERT INTO stock_positions (
-        contract, name, total_shares, avg_cost, latest_price,
+        contract, name, user_id, total_shares, avg_cost, latest_price,
         market_value, profit, profit_rate, updated_at
     )
     VALUES (
-        p_contract, v_name, v_position_shares, v_avg_cost, v_latest_price,
+        p_contract, v_name, p_user_id, v_position_shares, v_avg_cost, v_latest_price,
         v_market_value, v_total_profit, v_profit_rate, NOW()
     )
-    ON CONFLICT (contract) DO UPDATE SET
+    ON CONFLICT (user_id, contract) DO UPDATE SET
         name = EXCLUDED.name,
         total_shares = EXCLUDED.total_shares,
         avg_cost = EXCLUDED.avg_cost,
@@ -224,17 +272,20 @@ CREATE OR REPLACE FUNCTION trigger_recalculate_position()
 RETURNS TRIGGER AS $$
 DECLARE
     v_contract VARCHAR;
+    v_user_id INTEGER;
 BEGIN
-    -- 确定需要重新计算的合约
+    -- 确定需要重新计算的合约和用户
     IF TG_OP = 'DELETE' THEN
         v_contract := OLD.contract;
+        v_user_id := OLD.user_id;
     ELSE
         v_contract := NEW.contract;
+        v_user_id := NEW.user_id;
     END IF;
-    
+
     -- 调用重算函数
-    PERFORM recalculate_position(v_contract);
-    
+    PERFORM recalculate_position(v_contract, v_user_id);
+
     IF TG_OP = 'DELETE' THEN
         RETURN OLD;
     ELSE
@@ -244,6 +295,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 在交易表上创建触发器
+DROP TRIGGER IF EXISTS trg_stock_trades_recalc ON stock_trades;
 CREATE TRIGGER trg_stock_trades_recalc
 AFTER INSERT OR UPDATE OR DELETE ON stock_trades
 FOR EACH ROW
@@ -257,4 +309,4 @@ COMMENT ON TABLE stock_trades IS '股票交易记录表';
 COMMENT ON TABLE stock_positions IS '股票持仓表（自动计算）';
 COMMENT ON TABLE daily_serial_counters IS '每日流水号计数器';
 COMMENT ON FUNCTION generate_buy_order_no(DATE) IS '生成买入单号：NO+YYYYMMDD+4位流水号';
-COMMENT ON FUNCTION recalculate_position(VARCHAR) IS '全量重算持仓数据';
+COMMENT ON FUNCTION recalculate_position(VARCHAR, INTEGER) IS '全量重算持仓数据';

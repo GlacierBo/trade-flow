@@ -5,11 +5,22 @@ export const useStockStore = defineStore('stock', {
   state: () => ({
     trades: [],
     positions: [],
+    tags: [],
     searchQuery: '',
 
     // Auth
     isAuthenticated: false,
     username: '',
+    userId: null,
+    userRole: '',
+
+    // Admin
+    users: [],
+    usersTotal: 0,
+    usersPage: 1,
+
+    // Password change modal
+    passwordModalVisible: false,
 
     // Navigation
     currentView: 'home',
@@ -17,6 +28,7 @@ export const useStockStore = defineStore('stock', {
     // Trade modal
     tradeModalVisible: false,
     tradeType: 'buy',
+    tradePresetData: null, // 预填充数据（从标签点击传入）
 
     // Sell modal
     sellModalVisible: false,
@@ -33,7 +45,15 @@ export const useStockStore = defineStore('stock', {
     priceValue: '',
 
     // Toasts
-    toasts: []
+    toasts: [],
+
+    // Tab
+    activeTab: 'trade',
+
+    // Portfolio
+    portfolioItems: [],
+    portfolioModalVisible: false,
+    portfolioPresetData: null
   }),
 
   getters: {
@@ -45,29 +65,75 @@ export const useStockStore = defineStore('stock', {
         t.name.toLowerCase().includes(q) ||
         t.buy_order_no.toLowerCase().includes(q)
       )
-    }
+    },
+    isAdmin: (state) => state.userRole === 'admin'
   },
 
   actions: {
     // Auth actions
-    login(username, password) {
-      // 简单的用户名密码验证（实际项目中应该使用后端 API）
-      if (username === 'admin' && password === 'admin') {
+    async login(username, password) {
+      try {
+        const result = await api.verifyLogin(username, password)
+        if (!result) {
+          this.showToast('用户名或密码错误', 'error')
+          return false
+        }
         this.isAuthenticated = true
-        this.username = username
-        // 保存到 localStorage
-        localStorage.setItem('auth_token', 'admin_token')
-        localStorage.setItem('username', username)
+        this.username = result.username
+        this.userId = result.id
+        this.userRole = result.role
+        localStorage.setItem('auth_token', 'db_token')
+        localStorage.setItem('username', result.username)
+        localStorage.setItem('user_role', result.role)
+        localStorage.setItem('user_id', String(result.id))
         return true
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return false
       }
-      return false
+    },
+
+    async register(username) {
+      try {
+        const result = await api.registerUser(username)
+        if (result.error) {
+          this.showToast(result.error, 'error')
+          return null
+        }
+        return result.password
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return null
+      }
+    },
+
+    async changePassword(oldPassword, newPassword) {
+      if (!this.userId) return false
+      try {
+        const ok = await api.changePassword(this.userId, oldPassword, newPassword)
+        if (ok) {
+          this.showToast('密码修改成功', 'success')
+          this.passwordModalVisible = false
+        } else {
+          this.showToast('原密码错误', 'error')
+        }
+        return ok
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return false
+      }
     },
 
     logout() {
       this.isAuthenticated = false
       this.username = ''
+      this.userId = null
+      this.userRole = ''
+      this.activeTab = 'trade'
       localStorage.removeItem('auth_token')
       localStorage.removeItem('username')
+      localStorage.removeItem('user_role')
+      localStorage.removeItem('user_id')
     },
 
     setView(view) {
@@ -77,19 +143,54 @@ export const useStockStore = defineStore('stock', {
     checkAuth() {
       const token = localStorage.getItem('auth_token')
       const username = localStorage.getItem('username')
+      const role = localStorage.getItem('user_role')
+      const uid = localStorage.getItem('user_id')
       if (token && username) {
         this.isAuthenticated = true
         this.username = username
+        this.userRole = role || ''
+        this.userId = uid ? parseInt(uid) : null
       }
     },
 
+    // Admin actions
+    async loadUsers(page = 1) {
+      try {
+        this.usersPage = page
+        const result = await api.fetchUsers(page, 20)
+        this.users = result.users || []
+        this.usersTotal = result.total || 0
+      } catch (e) {
+        this.showToast(e.message, 'error')
+      }
+    },
+
+    async resetUserPassword(userId) {
+      try {
+        const newPassword = await api.resetUserPassword(userId)
+        this.showToast(`密码已重置为: ${newPassword}`, 'success')
+        return newPassword
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        return null
+      }
+    },
+
+    openPasswordModal() {
+      this.passwordModalVisible = true
+    },
+
+    closePasswordModal() {
+      this.passwordModalVisible = false
+    },
+
     async loadData() {
-      await Promise.all([this.loadTrades(), this.loadPositions()])
+      await Promise.all([this.loadTrades(), this.loadPositions(), this.loadTags()])
     },
 
     async loadTrades() {
       try {
-        this.trades = await api.fetchTrades()
+        this.trades = await api.fetchTrades(this.userId)
       } catch (e) {
         this.showToast(e.message, 'error')
       }
@@ -97,9 +198,18 @@ export const useStockStore = defineStore('stock', {
 
     async loadPositions() {
       try {
-        this.positions = await api.fetchPositions()
+        this.positions = await api.fetchPositions(this.userId)
       } catch (e) {
         this.showToast(e.message, 'error')
+      }
+    },
+
+    async loadTags() {
+      try {
+        this.tags = await api.fetchTradeTags(this.userId)
+      } catch (e) {
+        console.error('加载标签失败:', e)
+        // 标签加载失败不影响主流程
       }
     },
 
@@ -114,7 +224,14 @@ export const useStockStore = defineStore('stock', {
           fee_rate: parseFloat(feeRate) / 100,
           min_fee: minFee || 0.2
         }
-        const result = await api.createTrade(data)
+        const result = await api.createTrade(data, this.userId)
+
+        // 只在买入时更新标签
+        if (this.tradeType === 'buy' && contract && name) {
+          await api.upsertTradeTag(contract, name, this.userId)
+          await this.loadTags()
+        }
+        
         this.showToast('交易成功', 'success')
         this.closeTradeModal()
         await this.loadData()
@@ -137,7 +254,7 @@ export const useStockStore = defineStore('stock', {
           min_fee: minFee || 0.2,
           buy_order_no: buyOrderNo
         }
-        const result = await api.createTrade(data)
+        const result = await api.createTrade(data, this.userId)
         this.showToast('卖出成功', 'success')
         this.closeSellModal()
         await this.loadData()
@@ -150,7 +267,7 @@ export const useStockStore = defineStore('stock', {
 
     async deleteTrade(id) {
       try {
-        await api.deleteTrade(id)
+        await api.deleteTrade(id, this.userId)
         this.showToast('删除成功', 'success')
         await this.loadData()
       } catch (e) {
@@ -158,9 +275,28 @@ export const useStockStore = defineStore('stock', {
       }
     },
 
+    async deleteTag(tagId) {
+      try {
+        await api.deleteTradeTag(tagId, this.userId)
+        this.showToast('标签已删除', 'success')
+        await this.loadTags()
+      } catch (e) {
+        this.showToast(e.message, 'error')
+      }
+    },
+
+    handleTagClick(tag) {
+      // 设置预填充数据（只填充合约代码和名称，不填充价格）
+      this.tradePresetData = {
+        contract: tag.contract,
+        name: tag.name
+      }
+      this.openTradeModal()
+    },
+
     async updatePrice(positionId, price) {
       try {
-        await api.updatePositionPrice(positionId, parseFloat(price))
+        await api.updatePositionPrice(positionId, parseFloat(price), this.userId)
         this.showToast('价格更新成功', 'success')
         this.closePriceModal()
         await this.loadPositions()
@@ -171,7 +307,7 @@ export const useStockStore = defineStore('stock', {
 
     async clearPosition(positionId) {
       try {
-        await api.clearPosition(positionId)
+        await api.clearPosition(positionId, this.userId)
         this.showToast('清仓成功', 'success')
         await this.loadData()
       } catch (e) {
@@ -187,6 +323,7 @@ export const useStockStore = defineStore('stock', {
 
     closeTradeModal() {
       this.tradeModalVisible = false
+      this.tradePresetData = null
     },
 
     setTradeType(type) {
@@ -231,6 +368,62 @@ export const useStockStore = defineStore('stock', {
     closePriceModal() {
       this.priceModalVisible = false
       this.priceTarget = null
+    },
+
+    // Tab actions
+    setActiveTab(tab) {
+      this.activeTab = tab
+    },
+
+    // Portfolio actions
+    async loadPortfolioItems() {
+      try {
+        this.portfolioItems = await api.fetchPortfolioItems(this.userId)
+      } catch (e) {
+        console.error('加载持仓项目失败:', e)
+      }
+    },
+
+    async createPortfolioItem(form) {
+      const { name, contract, tag, price } = form
+      try {
+        const item = await api.createPortfolioItem({ name, contract, tag, price }, this.userId)
+        this.showToast('保存成功', 'success')
+        this.closePortfolioModal()
+        await this.loadPortfolioItems()
+        return item
+      } catch (e) {
+        this.showToast(e.message, 'error')
+        throw e
+      }
+    },
+
+    async deletePortfolioItem(id) {
+      try {
+        await api.deletePortfolioItem(id, this.userId)
+        this.showToast('已删除', 'success')
+        await this.loadPortfolioItems()
+      } catch (e) {
+        this.showToast(e.message, 'error')
+      }
+    },
+
+    handlePortfolioTagClick(item) {
+      this.portfolioPresetData = {
+        name: item.name,
+        contract: item.contract,
+        tag: item.tag || ''
+      }
+      this.openPortfolioModal()
+    },
+
+    openPortfolioModal() {
+      this.portfolioModalVisible = true
+    },
+
+    closePortfolioModal() {
+      this.portfolioModalVisible = false
+      this.portfolioPresetData = null
     },
 
     showToast(msg, type = 'success') {
