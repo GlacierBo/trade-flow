@@ -16,6 +16,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 const menuItems = [
   { key: 'home', label: '网格交易', icon: 'home' },
   { key: 'stocks', label: '股票查询', icon: 'search' },
+  { key: 'allocator', label: '持仓分配', icon: 'grid' },
   { key: 'portfolio', label: '持仓比例', icon: 'chart' },
   { key: 'users', label: '用户管理', icon: 'users', adminOnly: true },
 ]
@@ -25,6 +26,7 @@ const iconMap = {
   chart: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />`,
   users: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />`,
   search: `<circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />`,
+  grid: `<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />`,
 }
 
 function toggleMenu() {

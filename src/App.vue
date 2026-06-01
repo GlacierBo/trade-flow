@@ -16,6 +16,7 @@ import UserManagement from './components/UserManagement.vue'
 import SponsorView from './components/SponsorView.vue'
 import ChangePasswordForm from './components/ChangePasswordForm.vue'
 import StockSearch from './components/StockSearch.vue'
+import PortfolioAllocator from './components/PortfolioAllocator.vue'
 
 const store = useStockStore()
 
@@ -73,6 +74,9 @@ onMounted(() => {
 
       <!-- 股票查询页 -->
       <StockSearch v-if="store.currentView === 'stocks'" />
+
+      <!-- 持仓分配页 -->
+      <PortfolioAllocator v-if="store.currentView === 'allocator'" />
 
       <!-- 持仓比例页 -->
       <PortfolioRatio v-if="store.currentView === 'portfolio'" />
