@@ -1,5 +1,6 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useStockStore } from './stores/stock'
 import LoginPage from './components/LoginPage.vue'
 import Sidebar from './components/Sidebar.vue'
@@ -19,11 +20,22 @@ import StockSearch from './components/StockSearch.vue'
 import PortfolioAllocator from './components/PortfolioAllocator.vue'
 
 const store = useStockStore()
+const route = useRoute()
+const router = useRouter()
+
+// 路由变化同步到 store，用来高亮侧边栏
+watch(() => route.name, (name) => {
+  if (name && typeof name === 'string') store.setView(name)
+})
 
 onMounted(() => {
   store.checkAuth()
   if (store.isAuthenticated) {
     store.loadData()
+    // 首次加载，URL 为空时跳到 home
+    if (route.name === 'home' || !route.name) {
+      store.setView('home')
+    }
   }
 })
 </script>
@@ -39,7 +51,7 @@ onMounted(() => {
     <!-- Content Area -->
     <main class="flex-1 ml-60 p-6">
       <!-- 网格交易页 -->
-      <div v-if="store.currentView === 'home'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div v-if="route.name === 'home'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div class="lg:col-span-2">
           <QuickTrade />
         </div>
@@ -73,19 +85,19 @@ onMounted(() => {
       </div>
 
       <!-- 股票查询页 -->
-      <StockSearch v-if="store.currentView === 'stocks'" />
+      <StockSearch v-if="route.name === 'stocks'" />
 
       <!-- 持仓分配页 -->
-      <PortfolioAllocator v-if="store.currentView === 'allocator'" />
+      <PortfolioAllocator v-if="route.name === 'allocator'" />
 
       <!-- 持仓比例页 -->
-      <PortfolioRatio v-if="store.currentView === 'portfolio'" />
+      <PortfolioRatio v-if="route.name === 'portfolio'" />
 
       <!-- 用户管理页（仅管理员） -->
-      <UserManagement v-if="store.currentView === 'users'" />
+      <UserManagement v-if="route.name === 'users'" />
 
       <!-- 赞助作者页 -->
-      <div v-if="store.currentView === 'sponsor'" class="py-8">
+      <div v-if="route.name === 'sponsor'" class="py-8">
         <SponsorView />
       </div>
     </main>

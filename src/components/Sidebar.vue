@@ -1,8 +1,11 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useStockStore } from '../stores/stock'
 
 const store = useStockStore()
+const route = useRoute()
+const router = useRouter()
 const showMenu = ref(false)
 
 function onDocClick(e) {
@@ -60,10 +63,10 @@ function handleLogout() {
       <button
         v-for="item in menuItems.filter(i => !i.adminOnly || store.isAdmin)"
         :key="item.key"
-        @click="store.setView(item.key)"
+        @click="router.push({ name: item.key })"
         :class="[
           'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all',
-          store.currentView === item.key
+          route.name === item.key
             ? 'bg-blue-500/20 text-blue-400'
             : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/50'
         ]"
@@ -76,10 +79,10 @@ function handleLogout() {
     <!-- Sponsor Button -->
     <div class="px-3 pb-2">
       <button
-        @click="store.setView('sponsor')"
+        @click="router.push({ name: 'sponsor' })"
         :class="[
           'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all',
-          store.currentView === 'sponsor'
+          route.name === 'sponsor'
             ? 'bg-amber-500/20 text-amber-400'
             : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/50'
         ]"
