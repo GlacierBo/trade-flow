@@ -1,8 +1,9 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
 
 const store = useWatchlistStore()
+const removing = ref(null) // 当前正在删除的 code
 
 const lastUpdatedText = computed(() => {
   if (!store.lastRefreshed) return ''
@@ -40,6 +41,16 @@ function fmtPercent(v) {
   if (!v && v !== 0) return '0.00%'
   const sign = v > 0 ? '+' : ''
   return `${sign}${(v * 100).toFixed(2)}%`
+}
+
+async function handleRemove(code) {
+  if (removing.value) return
+  removing.value = code
+  try {
+    await store.remove(code)
+  } finally {
+    removing.value = null
+  }
 }
 </script>
 
@@ -83,9 +94,11 @@ function fmtPercent(v) {
           </div>
         </div>
         <button
-          class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+          class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg transition-colors"
+          :class="removing === item.code ? 'text-gray-600' : 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'"
           :title="'删除 ' + item.name"
-          @click="store.remove(item.code)"
+          :disabled="removing === item.code"
+          @click="handleRemove(item.code)"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

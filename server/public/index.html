@@ -150,6 +150,8 @@ const API = '/api';
 // State
 let watchlist = [];
 let searchResults = [];
+let _pendingOps = new Set(); // 防连点
+let _searching = false;
 
 // DOM refs
 const $ = id => document.getElementById(id);
@@ -182,8 +184,10 @@ async function api(url, opts = {}) {
 }
 
 async function doSearch() {
+  if (_searching) return;
   const q = searchInput.value.trim();
   if (!q) return;
+  _searching = true;
   searchBtn.disabled = true;
   searchBtn.textContent = '搜索中...';
   try {
@@ -195,6 +199,7 @@ async function doSearch() {
     resultsContainer.innerHTML = `<div class="error-state"><p>${err.message}</p></div>`;
     resultsSection.style.display = '';
   } finally {
+    _searching = false;
     searchBtn.disabled = false;
     searchBtn.textContent = '搜索';
   }
@@ -211,27 +216,47 @@ async function loadWatchlist() {
 }
 
 async function refreshWatchlist() {
+  if (_pendingOps.has('_refresh')) return;
+  _pendingOps.add('_refresh');
+  refreshBtn.style.opacity = '0.4';
+  refreshBtn.style.pointerEvents = 'none';
   refreshStatus.textContent = '刷新中...';
   try {
     const items = await api(`${API}/watchlist/refresh`, { method: 'POST' });
     watchlist = items || [];
   } catch (err) {
     refreshStatus.textContent = err.message;
+  } finally {
+    _pendingOps.delete('_refresh');
+    refreshBtn.style.opacity = '';
+    refreshBtn.style.pointerEvents = '';
   }
   renderWatchlist();
 }
 
 async function addToWatchlist(code, name) {
+  if (_pendingOps.has(code)) return;
+  _pendingOps.add(code);
+  renderResults();
+  renderWatchlist();
   try {
     await api(`${API}/watchlist`, { method: 'POST', body: JSON.stringify({ code, name }) });
     await loadWatchlist();
-    renderResults(); // update button states
+    renderResults();
   } catch (err) {
     alert(err.message);
+  } finally {
+    _pendingOps.delete(code);
+    renderResults();
+    renderWatchlist();
   }
 }
 
 async function removeFromWatchlist(code) {
+  if (_pendingOps.has(code)) return;
+  _pendingOps.add(code);
+  renderResults();
+  renderWatchlist();
   try {
     await api(`${API}/watchlist/${code}`, { method: 'DELETE' });
     watchlist = watchlist.filter(i => i.code !== code);
@@ -239,6 +264,10 @@ async function removeFromWatchlist(code) {
     renderResults();
   } catch (err) {
     alert(err.message);
+  } finally {
+    _pendingOps.delete(code);
+    renderWatchlist();
+    renderResults();
   }
 }
 
@@ -264,8 +293,9 @@ function stockToHTML(s, showWatchBtn = true) {
   const pCls = pctClass(pct);
   const bgCls = pct > 0 ? 'up' : pct < 0 ? 'down' : '';
   const watched = isWatched(s.code);
+  const pending = _pendingOps.has(s.code);
   const watchBtn = showWatchBtn
-    ? `<button class="action-btn ${watched ? 'active' : 'add'}" onclick="${watched ? `removeFromWatchlist('${s.code}')` : `addToWatchlist('${s.code}','${s.name}')`}" title="${watched ? '取消自选' : '加自选'}">
+    ? `<button class="action-btn ${watched ? 'active' : 'add'}" onclick="${!pending ? (watched ? `removeFromWatchlist('${s.code}')` : `addToWatchlist('${s.code}','${s.name}')`) : ''}" title="${pending ? '操作中...' : (watched ? '取消自选' : '加自选')}" style="${pending ? 'opacity:0.4;pointer-events:none' : ''}">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="${watched ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
       </button>`
     : '';
