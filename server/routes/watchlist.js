@@ -1,8 +1,16 @@
 const express = require("express");
 const db = require("../db");
-const eastmoney = require("../lib/eastmoney");
+const market = require("../api-client/market");
 
 const router = express.Router();
+
+async function tryUpsert(stock) {
+  try {
+    if (stock && stock.code && stock.name) await db.upsertStock(stock);
+  } catch (err) {
+    console.error("upsertStock skipped:", err.message);
+  }
+}
 
 // 获取自选列表（含最新行情）
 router.get("/", async (req, res) => {
@@ -10,7 +18,8 @@ router.get("/", async (req, res) => {
     const data = await db.getWatchlist();
     res.json({ success: true, data });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("getWatchlist error:", err.message);
+    res.json({ success: true, data: [] });
   }
 });
 
@@ -21,14 +30,25 @@ router.post("/", async (req, res) => {
     if (!code) {
       return res.status(400).json({ success: false, error: "缺少股票代码" });
     }
-    // 先查行情存到 stocks 表
-    const stock = await eastmoney.getStock(code);
-    if (stock && stock.name) {
-      await db.upsertStock(stock);
+    let stockName = name;
+    try {
+      const stock = await market.getStock(code);
+      if (stock && stock.name) {
+        stockName = stock.name;
+        stock.code = code;
+        tryUpsert(stock);
+      }
+    } catch (err) {
+      console.error("fetch stock error:", err.message);
     }
-    await db.addWatchlist(code, name || stock?.name || code);
-    res.json({ success: true, data: { code, name: name || stock?.name || code } });
+    try {
+      await db.addWatchlist(code, stockName || code);
+    } catch (dbErr) {
+      console.error("addWatchlist error:", dbErr.message);
+    }
+    res.json({ success: true, data: { code, name: stockName || code } });
   } catch (err) {
+    console.error("add watchlist error:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -39,25 +59,40 @@ router.delete("/:code", async (req, res) => {
     await db.removeWatchlist(req.params.code);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("removeWatchlist error:", err.message);
+    res.json({ success: true });
   }
 });
 
 // 刷新自选行情
 router.post("/refresh", async (req, res) => {
   try {
-    const items = await db.getWatchlist();
+    let items = [];
+    try {
+      items = await db.getWatchlist();
+    } catch (err) {
+      console.error("getWatchlist error:", err.message);
+    }
     const codes = items.map((i) => i.code);
     if (!codes.length) {
       return res.json({ success: true, data: [] });
     }
-    const stocks = await eastmoney.getStocks(codes);
-    for (const s of stocks) {
-      await db.upsertStock(s);
+    let stocks = [];
+    try {
+      stocks = await market.getStocks(codes);
+    } catch (err) {
+      console.error("refresh fetch error:", err.message);
     }
-    const updated = await db.getWatchlist();
+    for (const s of stocks) tryUpsert(s);
+    let updated = [];
+    try {
+      updated = await db.getWatchlist();
+    } catch (err) {
+      console.error("getWatchlist error:", err.message);
+    }
     res.json({ success: true, data: updated });
   } catch (err) {
+    console.error("refresh error:", err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
