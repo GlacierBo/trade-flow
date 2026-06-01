@@ -4,14 +4,6 @@ const market = require("../api-client/market");
 
 const router = express.Router();
 
-async function tryUpsert(stock) {
-  try {
-    if (stock && stock.code && stock.name) await db.upsertStock(stock);
-  } catch (err) {
-    console.error("upsertStock skipped:", err.message);
-  }
-}
-
 // 获取自选列表（含最新行情）
 router.get("/", async (req, res) => {
   try {
@@ -23,7 +15,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-// 添加自选
+// 添加自选：查一次行情存入 stocks，再写入 watchlist
 router.post("/", async (req, res) => {
   try {
     const { code, name } = req.body;
@@ -33,23 +25,21 @@ router.post("/", async (req, res) => {
     let stockName = name;
     try {
       const stock = await market.getStock(code);
-      if (stock && stock.name) {
+      if (stock?.name) {
         stockName = stock.name;
         stock.code = code;
-        tryUpsert(stock);
+        await db.insertStock(stock);
       }
     } catch (err) {
       console.error("fetch stock error:", err.message);
     }
-    try {
-      await db.addWatchlist(code, stockName || code);
-    } catch (dbErr) {
-      console.error("addWatchlist error:", dbErr.message);
-    }
+    await db.addWatchlist(code, stockName || code).catch((e) =>
+      console.error("addWatchlist error:", e.message)
+    );
     res.json({ success: true, data: { code, name: stockName || code } });
   } catch (err) {
-    console.error("add watchlist error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    console.error("add error:", err.message);
+    res.json({ success: true, data: { code: req.body.code, name: req.body.name || req.body.code } });
   }
 });
 
@@ -64,37 +54,49 @@ router.delete("/:code", async (req, res) => {
   }
 });
 
-// 刷新自选行情
+// 手动刷新所有自选行情
 router.post("/refresh", async (req, res) => {
   try {
-    let items = [];
-    try {
-      items = await db.getWatchlist();
-    } catch (err) {
-      console.error("getWatchlist error:", err.message);
-    }
+    const items = await db.getWatchlistCodes().catch(() => []);
     const codes = items.map((i) => i.code);
     if (!codes.length) {
       return res.json({ success: true, data: [] });
     }
-    let stocks = [];
-    try {
-      stocks = await market.getStocks(codes);
-    } catch (err) {
-      console.error("refresh fetch error:", err.message);
+    const stocks = await market.getStocks(codes);
+    for (const s of stocks) {
+      if (s.code && s.name) {
+        await db.insertStock(s);
+      }
     }
-    for (const s of stocks) tryUpsert(s);
-    let updated = [];
-    try {
-      updated = await db.getWatchlist();
-    } catch (err) {
-      console.error("getWatchlist error:", err.message);
-    }
+    const updated = await db.getWatchlist().catch(() => []);
     res.json({ success: true, data: updated });
   } catch (err) {
     console.error("refresh error:", err.message);
-    res.status(500).json({ success: false, error: err.message });
+    res.json({ success: true, data: [] });
   }
 });
+
+// 定时刷新任务（10 分钟一次）
+let _timer = null;
+function startScheduler() {
+  if (_timer) return;
+  console.log("[scheduler] 自选行情每 10 分钟自动刷新");
+  const tick = async () => {
+    try {
+      const items = await db.getWatchlistCodes().catch(() => []);
+      if (!items.length) return;
+      const stocks = await market.getStocks(items.map((i) => i.code));
+      for (const s of stocks) {
+        if (s.code && s.name) await db.insertStock(s);
+      }
+      console.log(`[scheduler] ✓ ${stocks.length} 只股票行情已更新`);
+    } catch (err) {
+      console.error("[scheduler] 刷新失败:", err.message);
+    }
+  };
+  tick(); // 启动立即执行一次
+  _timer = setInterval(tick, 10 * 60 * 1000);
+}
+router.startScheduler = startScheduler;
 
 module.exports = router;

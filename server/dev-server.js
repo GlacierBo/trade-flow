@@ -22,6 +22,9 @@ app.use("/api/watchlist", watchlistRouter);
 // 静态页面
 app.use(express.static(path.join(__dirname, "public")));
 
+// 启动定时刷新（10 分钟轮询自选行情）
+watchlistRouter.startScheduler();
+
 // 错误处理
 app.use(errorHandler);
 

@@ -1,6 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
 
-// 兼容 VITE_ 前缀（用户可能直接复制了根目录的 .env）
 const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const supabaseKey =
   process.env.SUPABASE_KEY ||
@@ -16,64 +15,73 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 module.exports = {
-  async upsertStock(stock) {
+  // 插入一条行情记录
+  async insertStock(stock) {
     const { code, name, price, changePercent, open, high, low, yesterday, volume, amount, amplitude, turnoverRate, totalMarketCap, source } = stock;
-    const { error } = await supabase.from("stocks").upsert(
-      {
-        code,
-        name,
-        price,
-        changePercent,
-        open,
-        high,
-        low,
-        yesterday,
-        volume,
-        amount,
-        amplitude,
-        turnoverRate,
-        totalMarketCap,
-        source,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "code" }
-    );
-    if (error) console.error("upsertStock error:", error.message);
+    const { error } = await supabase.from("fnos_stocks").insert({
+      code, name, price, changePercent, open, high, low, yesterday,
+      volume, amount, amplitude, turnoverRate, totalMarketCap, source,
+    });
+    if (error) console.error("insertStock error:", error.message);
   },
 
+  // 获取某只股票的最新行情
+  async getLatestStock(code) {
+    const { data, error } = await supabase
+      .from("fnos_stocks")
+      .select("*")
+      .eq("code", code)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return data?.[0] || null;
+  },
+
+  // 获取自选列表（含最新行情）
   async getWatchlist() {
-    // 获取自选列表
     const { data: items, error: e1 } = await supabase
-      .from("watchlist")
+      .from("fnos_watchlist")
       .select("code, name, added_at")
       .order("added_at");
     if (e1) throw e1;
     if (!items?.length) return [];
 
-    // 批量关联最新行情
-    const codes = items.map((i) => i.code);
+    // 每个自选关联最新一条行情
     const { data: stocks, error: e2 } = await supabase
-      .from("stocks")
+      .from("fnos_stocks")
       .select("*")
-      .in("code", codes);
+      .in("code", items.map((i) => i.code))
+      .order("created_at", { ascending: false });
     if (e2) throw e2;
 
-    const stockMap = new Map((stocks || []).map((s) => [s.code, s]));
-    return items.map((item) => ({ ...item, ...(stockMap.get(item.code) || {}) }));
+    // 取每个 code 的最新一条
+    const latest = new Map();
+    for (const s of stocks || []) {
+      if (!latest.has(s.code)) latest.set(s.code, s);
+    }
+    return items.map((item) => ({ ...item, ...(latest.get(item.code) || {}) }));
   },
 
   async addWatchlist(code, name) {
     const { error } = await supabase
-      .from("watchlist")
+      .from("fnos_watchlist")
       .upsert({ code, name }, { onConflict: "code" });
     if (error) throw error;
   },
 
   async removeWatchlist(code) {
     const { error } = await supabase
-      .from("watchlist")
+      .from("fnos_watchlist")
       .delete()
       .eq("code", code);
     if (error) throw error;
+  },
+
+  async getWatchlistCodes() {
+    const { data, error } = await supabase
+      .from("fnos_watchlist")
+      .select("code, name");
+    if (error) throw error;
+    return data || [];
   },
 };
