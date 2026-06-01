@@ -9,22 +9,30 @@ let chart = null
 
 onMounted(() => {
   store.init()
+  // 多次尝试初始化（v-if 容器可能延迟渲染）
   tryInit()
+  setTimeout(tryInit, 300)
+  setTimeout(tryInit, 1000)
 })
 onUnmounted(() => {
+  ro?.disconnect()
   chart?.dispose()
 })
+
+let ro = null
 
 // 等容器渲染后再初始化图表
 function tryInit() {
   if (chart) return
-  nextTick(() => {
-    if (!chartRef.value) {
-      // 容器还没渲染，等数据变化
-      return
-    }
-    initChart()
-  })
+  if (!chartRef.value || !chartRef.value.isConnected || !chartRef.value.offsetParent) {
+    return  // 容器还没渲染或不可见
+  }
+  initChart()
+  if (chart) {
+    // 监听容器尺寸变化自动 resize
+    ro = new ResizeObserver(() => chart?.resize())
+    ro.observe(chartRef.value)
+  }
 }
 
 // 数据变化时初始化或更新图表
@@ -32,11 +40,13 @@ watch([() => store.buckets.length, () => store.totalAmount], () => {
   if (!chart && store.buckets.length && store.totalAmount) {
     tryInit()
   }
-})
+}, { flush: 'post' })
 
 // ========== ECharts Treemap ==========
 function initChart() {
-  if (!chartRef.value) return
+  if (!chartRef.value || !chartRef.value.isConnected) return
+  // dispose 旧的图表实例防止冲突
+  if (chart) chart.dispose()
   chart = echarts.init(chartRef.value)
   updateChart()
   chart.on('click', (params) => {
