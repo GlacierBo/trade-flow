@@ -44,10 +44,12 @@ const chartOption = computed(() => {
     },
     label: {
       formatter: () => {
-        const pct = store.bucketFillRatio(b.id) * 100
-        const overflow = store.bucketOverflow(b.id)
-        const pctText = pct > 0 ? `已用 ${pct.toFixed(0)}%` : ''
-        return `${b.name}\n${b.percentage}%\n¥${fmt(store.bucketTotal(b.id))}${overflow ? '\n⚠️超额' : ''}`
+        const lines = [b.name, `${b.percentage}%`]
+        if (showAmounts.value) {
+          lines.push(`¥${fmt(store.bucketTotal(b.id))}`)
+        }
+        if (store.bucketOverflow(b.id)) lines.push('⚠️超额')
+        return lines.join('\n')
       },
     },
   }))
@@ -57,16 +59,16 @@ const chartOption = computed(() => {
       formatter: (params) => {
         const b = buckets.find((x) => x.id === params.data.bucketId)
         if (!b) return ''
-        const limit = store.bucketLimit(b.id)
-        const total = store.bucketTotal(b.id)
-        const overflow = store.bucketOverflow(b.id)
-        return [
-          `<strong>${b.name}</strong>`,
-          `比例：${b.percentage}%`,
-          `额度：¥${fmt(limit)}`,
-          `已分配：¥${fmt(total)}`,
-          overflow ? `<span style="color:#f87171">⚠️ 超额 ${((total / limit - 1) * 100).toFixed(1)}%</span>` : '',
-        ].filter(Boolean).join('<br/>')
+        const lines = [`<strong>${b.name}</strong>`, `比例：${b.percentage}%`]
+        if (showAmounts.value) {
+          const limit = store.bucketLimit(b.id)
+          const total = store.bucketTotal(b.id)
+          lines.push(`额度：¥${fmt(limit)}`, `已分配：¥${fmt(total)}`)
+          if (store.bucketOverflow(b.id)) {
+            lines.push(`<span style="color:#f87171">⚠️ 超额 ${((total / limit - 1) * 100).toFixed(1)}%</span>`)
+          }
+        }
+        return lines.join('<br/>')
       },
     },
     series: [{
@@ -102,6 +104,13 @@ function updateChart() {
 watch(() => store.buckets.map((b) => b.percentage + b.positionIds.length).join(','), () => {
   nextTick(updateChart)
 })
+
+// ========== 金额显隐 ==========
+const showAmounts = ref(true)
+function toggleAmounts() {
+  showAmounts.value = !showAmounts.value
+  updateChart()
+}
 
 // ========== 拖拽 ==========
 const dragPosId = ref(null)
@@ -215,9 +224,18 @@ function fmt(v) {
           <span class="text-sm text-gray-400">总金额：</span>
           <template v-if="!editTotal">
             <span class="text-2xl font-black text-blue-400 cursor-pointer hover:text-blue-300 transition-colors" @click="openEditTotal">
-              ¥{{ fmt(store.totalAmount) }}
+              {{ showAmounts ? '¥' + fmt(store.totalAmount) : '***' }}
             </span>
             <button class="w-5 h-5 flex items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition-all text-sm font-bold leading-none" @click="openEditTotal">+</button>
+            <button
+              class="w-7 h-7 flex items-center justify-center rounded-lg transition-all text-sm"
+              :class="showAmounts ? 'bg-gray-700/50 text-gray-400 hover:text-amber-400' : 'bg-amber-500/20 text-amber-400'"
+              :title="showAmounts ? '隐藏金额' : '显示金额'"
+              @click="toggleAmounts"
+            >
+              <svg v-if="showAmounts" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg v-else viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button>
           </template>
           <template v-else>
             <input v-model.number="totalInput" type="number" class="bg-gray-700/50 border border-blue-500 rounded-xl px-3 py-1.5 text-lg font-black text-blue-400 outline-none w-36" @keydown.enter="saveTotal" />
@@ -265,7 +283,7 @@ function fmt(v) {
             <span class="text-sm font-bold text-gray-200 truncate">{{ pos.name }}</span>
             <span class="text-xs text-gray-500 font-mono">{{ pos.code }}</span>
           </div>
-          <div class="text-xs text-gray-400 mt-0.5">¥{{ fmt(pos.amount) }}</div>
+          <div class="text-xs text-gray-400 mt-0.5">{{ showAmounts ? '¥' + fmt(pos.amount) : '***' }}</div>
         </div>
         <div v-for="b in store.buckets" :key="'h-' + b.id">
           <div v-for="pos in store.bucketContracts(b.id)" :key="'p-' + pos.id" class="px-4 py-2 opacity-40 hover:opacity-60 transition-opacity" :title="'已分配到: ' + b.name">
@@ -335,10 +353,12 @@ function fmt(v) {
           <h3 class="text-lg font-black text-gray-100">{{ detailBucket?.name }}</h3>
           <p class="text-xs text-gray-500 mt-0.5">
             比例 {{ detailBucket?.percentage }}%
-            <span class="mx-1.5">|</span>
-            额度 ¥{{ fmt(detailLimit) }}
-            <span class="mx-1.5">|</span>
-            已用 ¥{{ fmt(detailTotal) }}
+            <template v-if="showAmounts">
+              <span class="mx-1.5">|</span>
+              额度 ¥{{ fmt(detailLimit) }}
+              <span class="mx-1.5">|</span>
+              已用 ¥{{ fmt(detailTotal) }}
+            </template>
             <span class="mx-1.5">|</span>
             <span :class="detailOverflow ? 'text-red-400' : 'text-green-400'">{{ detailLimit ? (detailTotal/detailLimit*100).toFixed(1) : 0 }}%</span>
             <span v-if="detailOverflow" class="text-red-400 ml-1">⚠️ 超额</span>
@@ -355,7 +375,7 @@ function fmt(v) {
             <span class="text-xs text-gray-500 font-mono ml-2">{{ pos.code }}</span>
           </div>
           <div class="flex items-center gap-3">
-            <span class="text-sm font-bold font-mono text-green-400">¥{{ fmt(pos.amount) }}</span>
+            <span class="text-sm font-bold font-mono text-green-400">{{ showAmounts ? '¥' + fmt(pos.amount) : '***' }}</span>
             <button class="w-6 h-6 flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all" title="移出" @click="store.removeFromBucket(pos.id, store.detailBucketId)"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
           </div>
         </div>
@@ -364,8 +384,8 @@ function fmt(v) {
       <div class="px-5 py-4 border-t border-gray-700/50 flex items-center justify-between">
         <span class="text-sm text-gray-400">合计</span>
         <span class="text-lg font-black font-mono" :class="detailOverflow ? 'text-red-400' : 'text-green-400'">
-          ¥{{ fmt(detailTotal) }}
-          <span class="text-sm font-normal text-gray-500">/ ¥{{ fmt(detailLimit) }}</span>
+          {{ showAmounts ? '¥' + fmt(detailTotal) : '***' }}
+          <span v-if="showAmounts" class="text-sm font-normal text-gray-500">/ ¥{{ fmt(detailLimit) }}</span>
         </span>
       </div>
     </div>
