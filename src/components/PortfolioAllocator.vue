@@ -83,11 +83,23 @@ function calcLayout() {
   const ch = rect.height - 32
   if (cw <= 0 || ch <= 0) return
 
+  const usedPct = store.usedPercentage
   const items = store.buckets.map((b) => ({
     id: b.id,
     pct: b.percentage || 0.01,
     x: 0, y: 0, w: 0, h: 0,
+    _unallocated: false,
   }))
+
+  // 不足 100% 时添加未分配占位块
+  if (usedPct < 100) {
+    items.push({
+      id: '__unallocated__',
+      pct: 100 - usedPct,
+      x: 0, y: 0, w: 0, h: 0,
+      _unallocated: true,
+    })
+  }
 
   squarify(items, 0, 0, cw, ch)
   layout.value = items
@@ -264,8 +276,8 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
         <div
           v-for="item in layout"
           :key="item.id"
-          class="absolute rounded-xl border transition-all duration-300"
-          :class="store.bucketOverflow(item.id) ? 'border-red-400/50' : 'border-gray-600/60'"
+          class="absolute rounded-xl transition-all duration-300 overflow-hidden"
+          :class="item._unallocated ? 'border-2 border-dashed border-gray-600/30' : (store.bucketOverflow(item.id) ? 'border-2 border-red-400/50' : 'border border-gray-600/60')"
           :style="{
             left: item.x + 'px',
             top: item.y + 'px',
@@ -274,56 +286,41 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
           }"
           @dragover="onDragOver"
           @drop="(e) => onDrop(e, item.id)"
-          @click="store.setDetailBucket(item.id)"
+          @click="!item._unallocated && store.setDetailBucket(item.id)"
         >
-          <!-- 填充层 -->
-          <div
-            class="absolute inset-0 rounded-xl transition-all duration-500"
-            :class="store.bucketOverflow(item.id) ? 'bg-red-500/15' : 'bg-gradient-to-br from-blue-500/8 to-blue-400/15'"
-          />
-          <!-- 已分配填充（从底部往上） -->
-          <div
-            v-if="!store.bucketOverflow(item.id)"
-            class="absolute bottom-0 left-0 right-0 rounded-b-xl transition-all duration-500"
-            :class="store.bucketTotal(item.id) ? 'bg-blue-500/12' : ''"
-            :style="{ height: (store.bucketFillRatio(item.id) * 100) + '%' }"
-          />
+          <!-- 真实品种 -->
+          <template v-if="!item._unallocated">
+            <!-- 填充层 -->
+            <div class="absolute inset-0 rounded-xl transition-all duration-500" :class="store.bucketOverflow(item.id) ? 'bg-red-500/15' : 'bg-gradient-to-br from-blue-500/8 to-blue-400/15'" />
+            <!-- 已分配填充 -->
+            <div v-if="!store.bucketOverflow(item.id)" class="absolute bottom-0 left-0 right-0 rounded-b-xl transition-all duration-500" :class="store.bucketTotal(item.id) ? 'bg-blue-500/12' : ''" :style="{ height: (store.bucketFillRatio(item.id) * 100) + '%' }" />
 
-          <!-- 内容 -->
-          <div class="relative z-10 flex flex-col items-center justify-center h-full p-2 text-center">
-            <div class="text-sm font-black text-gray-100 truncate max-w-full leading-tight">{{ store.buckets.find(b => b.id === item.id)?.name }}</div>
-            <div class="text-xs text-gray-500 font-mono mt-0.5">{{ store.buckets.find(b => b.id === item.id)?.percentage }}%</div>
-            <div
-              class="text-base font-black font-mono mt-1"
-              :class="store.bucketOverflow(item.id) ? 'text-red-400' : (store.bucketTotal(item.id) > 0 ? 'text-green-400' : 'text-gray-500')"
-            >
-              ¥{{ fmt(store.bucketTotal(item.id)) }}
+            <div class="relative z-10 flex flex-col items-center justify-center h-full p-2 text-center">
+              <div class="text-sm font-black text-gray-100 truncate max-w-full leading-tight">{{ store.buckets.find(b => b.id === item.id)?.name }}</div>
+              <div class="text-xs text-gray-500 font-mono mt-0.5">{{ store.buckets.find(b => b.id === item.id)?.percentage }}%</div>
+              <div class="text-base font-black font-mono mt-1" :class="store.bucketOverflow(item.id) ? 'text-red-400' : (store.bucketTotal(item.id) > 0 ? 'text-green-400' : 'text-gray-500')">
+                ¥{{ fmt(store.bucketTotal(item.id)) }}
+              </div>
+              <div class="w-3/4 h-1 rounded-full bg-gray-700/50 overflow-hidden mt-1">
+                <div class="h-full rounded-full transition-all duration-500" :class="store.bucketOverflow(item.id) ? 'bg-red-400' : 'bg-blue-500'" :style="{ width: (store.bucketFillRatio(item.id) * 100) + '%' }" />
+              </div>
             </div>
 
-            <!-- 进度条 -->
-            <div class="w-3/4 h-1 rounded-full bg-gray-700/50 overflow-hidden mt-1">
-              <div
-                class="h-full rounded-full transition-all duration-500"
-                :class="store.bucketOverflow(item.id) ? 'bg-red-400' : 'bg-blue-500'"
-                :style="{ width: (store.bucketFillRatio(item.id) * 100) + '%' }"
-              />
+            <!-- 操作按钮 -->
+            <div class="absolute top-1 left-1 flex gap-1 opacity-0 hover:opacity-100 transition-opacity">
+              <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-400 hover:text-blue-400 text-xs font-bold" title="设置比例" @click.stop="openPctEdit(store.buckets.find(b => b.id === item.id))">%</button>
+              <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-500 hover:text-red-400" title="删除" @click.stop="store.removeBucket(item.id); nextTick(calcLayout)">
+                <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              </button>
             </div>
-          </div>
+          </template>
 
-          <!-- 操作按钮组 -->
-          <div class="absolute top-1 left-1 flex gap-1 opacity-0 hover:opacity-100 transition-opacity">
-            <button
-              class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-400 hover:text-blue-400 text-xs font-bold"
-              title="设置比例"
-              @click.stop="openPctEdit(store.buckets.find(b => b.id === item.id))"
-            >%</button>
-            <button
-              class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-500 hover:text-red-400"
-              title="删除"
-              @click.stop="store.removeBucket(item.id); nextTick(calcLayout)"
-            >
-              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            </button>
+          <!-- 未分配占位 -->
+          <div v-else class="flex flex-col items-center justify-center h-full text-gray-600">
+            <svg class="w-8 h-8 mb-1 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span class="text-xs font-mono">{{ (100 - store.usedPercentage).toFixed(1) }}% 未分配</span>
           </div>
         </div>
       </div>
