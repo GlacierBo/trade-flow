@@ -114,6 +114,22 @@ export const useAllocatorStore = defineStore('allocator', {
   actions: {
     init() {
       const data = load()
+      // 首次使用时填充示例数据
+      if (!data.buckets || !data.buckets.length) {
+        const sampleBuckets = [
+          { id: _id++, name: '半导体', percentage: 25, positionIds: [], color: 'rgba(59,130,246,0.3)' },
+          { id: _id++, name: '新能源', percentage: 20, positionIds: [], color: 'rgba(34,197,94,0.3)' },
+          { id: _id++, name: '消费', percentage: 18, positionIds: [], color: 'rgba(249,115,22,0.3)' },
+          { id: _id++, name: '医药', percentage: 15, positionIds: [], color: 'rgba(236,72,153,0.3)' },
+          { id: _id++, name: '金融', percentage: 12, positionIds: [], color: 'rgba(234,179,8,0.25)' },
+          { id: _id++, name: '军工', percentage: 10, positionIds: [], color: 'rgba(168,85,247,0.25)' },
+        ]
+        this.totalAmount = 100000
+        this.buckets = sampleBuckets
+        this.positions = []
+        save(this)
+        return
+      }
       this.totalAmount = data.totalAmount || 0
       this.buckets = data.buckets || []
       this.positions = data.positions || []
