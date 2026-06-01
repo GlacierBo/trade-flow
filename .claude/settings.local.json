@@ -23,7 +23,14 @@
       "Bash(findstr \":3001\")",
       "Bash(findstr LISTEN)",
       "Bash(taskkill /F /PID 9272)",
-      "Bash(taskkill //F //PID 9272)"
+      "Bash(taskkill //F //PID 9272)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(mkdir -p api-client)",
+      "Bash(mv lib/eastmoney.js lib/market.js api-client/)",
+      "Bash(rm -rf lib)",
+      "Bash(git revert *)",
+      "Bash(git stash *)"
     ]
   }
 }

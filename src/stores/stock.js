@@ -22,6 +22,9 @@ export const useStockStore = defineStore('stock', {
     // Profile modal
     profileModalVisible: false,
 
+    // Sidebar
+    sidebarCollapsed: false,
+
     // Navigation
     currentView: 'home',
 
@@ -134,6 +137,10 @@ export const useStockStore = defineStore('stock', {
       localStorage.removeItem('username')
       localStorage.removeItem('user_role')
       localStorage.removeItem('user_id')
+    },
+
+    toggleSidebar() {
+      this.sidebarCollapsed = !this.sidebarCollapsed
     },
 
     setView(view) {

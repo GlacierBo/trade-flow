@@ -49,7 +49,7 @@ onMounted(() => {
     <Sidebar />
 
     <!-- Content Area -->
-    <main class="flex-1 ml-60 p-6">
+    <main class="flex-1 p-6 transition-all duration-300" :class="store.sidebarCollapsed ? 'ml-16' : 'ml-60'">
       <!-- 网格交易页 -->
       <div v-if="route.name === 'home'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <div class="lg:col-span-2">
