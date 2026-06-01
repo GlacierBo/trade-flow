@@ -15,6 +15,7 @@ import PortfolioModal from './components/PortfolioModal.vue'
 import UserManagement from './components/UserManagement.vue'
 import SponsorView from './components/SponsorView.vue'
 import ChangePasswordForm from './components/ChangePasswordForm.vue'
+import StockSearch from './components/StockSearch.vue'
 
 const store = useStockStore()
 
@@ -69,6 +70,9 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
+      <!-- 股票查询页 -->
+      <StockSearch v-if="store.currentView === 'stocks'" />
 
       <!-- 持仓比例页 -->
       <PortfolioRatio v-if="store.currentView === 'portfolio'" />

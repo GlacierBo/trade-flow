@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently \"npm run dev:proxy\" \"npm run dev:vite\"",
+    "dev:vite": "vite",
+    "dev:proxy": "node server/dev-server.js",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -17,6 +19,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
     "autoprefixer": "^10.4.17",
+    "concurrently": "^9.1.2",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.1",
     "vite": "^5.0.0"

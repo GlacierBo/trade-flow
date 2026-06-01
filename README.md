@@ -25,13 +25,15 @@
 - **全量重算机制** — 每次交易变动自动重算持仓和盈亏，数据准确
 - **用户认证** — 用户名注册/登录，MD5+盐值加密，管理员可管理用户、重置密码
 - **数据隔离** — 多用户独立数据，每个用户只能看到和操作自己的交易、持仓、标签和持仓比例数据
+- **股票查询** — 搜索股票代码/名称，实时查看行情（现价、涨跌幅、最高/最低、昨收）
+- **自选股管理** — 添加/删除自选股，支持多数据源（东方财富），价格自动刷新
 
 ## Tech Stack
 
 | Frontend | Backend | Build |
 |----------|---------|-------|
 | Vue 3 (Composition API) | Supabase (PostgreSQL) | Vite 5 |
-| Pinia 2 | Auto API + RPC | Tailwind CSS 3 |
+| Pinia 2 | 东方财富行情 API（浏览器直连） | Tailwind CSS 3 |
 | No router (SPA view switching) | DB Triggers for auto recalc | PostCSS |
 
 ## Quick Start
@@ -69,7 +71,10 @@ src/
 ├── main.js                  # Entry: mount app, init Pinia
 ├── style.css                # Tailwind directives + custom animations
 ├── api/stock.js             # Supabase client + all API functions
+├── api/stock-quote.js       # 东方财富行情 API（搜索、实时报价）
 ├── stores/stock.js          # Pinia store (state, actions, modals)
+├── stores/stocks.js         # Pinia store（股票搜索状态）
+├── stores/watchlist.js      # Pinia store（自选股、localStorage 持久化、定时刷新）
 └── components/
     ├── LoginPage.vue        # Login / Register (username + auto-generated password)
     ├── TradeList.vue        # Trade history (buys with sell children)
@@ -82,7 +87,13 @@ src/
     ├── PortfolioRatio.vue   # Portfolio ratio calculator page
     ├── PortfolioModal.vue   # Add portfolio item dialog
     ├── UserManagement.vue   # Admin: paginated user list, reset passwords
-    └── ChangePasswordForm.vue # Change password modal
+    ├── ChangePasswordForm.vue # Change password modal
+    ├── StockSearch.vue      # 股票搜索主页面（搜索框 + 自选面板 + 结果网格）
+    ├── SearchBar.vue        # 搜索输入框（防抖自动搜索）
+    ├── StockGrid.vue        # 搜索结果网格布局
+    ├── StockCard.vue        # 股票卡片（名称、代码、现价、涨跌幅）
+    ├── StockDetailModal.vue # 股票详情弹窗
+    └── WatchlistPanel.vue   # 自选股面板（涨跌幅、删除、定时刷新）
 sql/
 ├── supabase-schema.sql      # Core schema: trades, positions, counters, triggers
 └── supabase-schema-tags.sql # Tags, portfolio_items, app_users + auth RPC functions
