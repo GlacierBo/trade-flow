@@ -16,61 +16,97 @@ onUnmounted(() => {
 const gridRef = ref(null)
 const layout = ref([])
 
-// 简单 squarified treemap 算法
-function squarify(items, cx, cy, cw, ch) {
-  if (!items.length || cw <= 0 || ch <= 0) return
+// Squarified Treemap 算法（板块热力图）
+const GAP = 4 // 块间距
+function squarify(items, x, y, w, h) {
+  if (!items.length || w <= 0 || h <= 0) return
   const total = items.reduce((s, i) => s + i.pct, 0)
   if (!total) return
 
-  // 按 pct 降序
+  // 归一化 pct 为总和 = 1
   const sorted = [...items].sort((a, b) => b.pct - a.pct)
-  const rows = []
-  let row = []
-  let rowSum = 0
+  const data = sorted.map(i => ({ ...i, pct: i.pct / total }))
 
-  for (const item of sorted) {
-    const pct = item.pct / total
-    const testRow = [...row, item]
-    const testSum = rowSum + pct
+  layoutItems(data, x, y, w, h)
+}
 
-    // 评估当前行和加入后的宽高比
-    const worstRow = worstAspectRatio(row, rowSum, cw, ch)
-    const worstTest = worstAspectRatio(testRow, testSum, cw, ch)
+function layoutItems(items, x, y, w, h) {
+  if (!items.length || w * h <= 0) return
 
-    if (row.length && worstTest > worstRow) {
-      rows.push({ items: row, sum: rowSum })
-      row = [item]
-      rowSum = pct
+  // 沿较长的边方向排列（短边作为行/列宽度）
+  const horizontal = w >= h
+  let remaining = [...items]
+  let cx = x, cy = y, cw = w, ch = h
+
+  while (remaining.length > 0) {
+    let row = []
+    let rowSum = 0
+    let bestScore = Infinity
+
+    // 贪心构建行：逐个加入直到宽高比变差
+    for (let i = 0; i < remaining.length; i++) {
+      const testRow = [...row, remaining[i]]
+      const testSum = rowSum + remaining[i].pct
+      const score = worstRatio(testRow, testSum, cw, ch, horizontal)
+
+      if (i > 0 && score > bestScore) break
+      bestScore = score
+      row = testRow
+      rowSum = testSum
+    }
+
+    // 放置这一行/列（留间隙）
+    if (horizontal) {
+      const rowH = ch * rowSum
+      let xx = cx
+      for (const item of row) {
+        const itemW = cw * (item.pct / rowSum)
+        item.x = xx + GAP/2
+        item.y = cy + GAP/2
+        item.w = Math.max(0, itemW - GAP)
+        item.h = Math.max(0, rowH - GAP)
+        xx += itemW
+      }
+      cy += rowH
+      ch -= rowH
     } else {
-      row.push(item)
-      rowSum += pct
+      const rowW = cw * rowSum
+      let yy = cy
+      for (const item of row) {
+        const itemH = ch * (item.pct / rowSum)
+        item.x = cx + GAP/2
+        item.y = yy + GAP/2
+        item.w = Math.max(0, rowW - GAP)
+        item.h = Math.max(0, itemH - GAP)
+        yy += itemH
+      }
+      cx += rowW
+      cw -= rowW
     }
-  }
-  if (row.length) rows.push({ items: row, sum: rowSum })
 
-  // 分配实际位置
-  let y = cy
-  for (const r of rows) {
-    const rh = ch * (r.sum / total)
-    let x = cx
-    const iw = cw / r.items.length
-    for (const item of r.items) {
-      item.x = x
-      item.y = y
-      item.w = iw
-      item.h = rh
-      x += iw
-    }
-    y += rh
+    remaining = remaining.slice(row.length)
   }
 }
 
-function worstAspectRatio(items, sum, cw, ch) {
-  if (!items.length || !sum) return Infinity
-  const w = sum > 0 ? cw : cw / items.length
-  const h = sum > 0 ? ch * sum : ch / items.length
-  const r = w / h
-  return Math.max(r, 1 / r)
+function worstRatio(row, rowSum, cw, ch, horizontal) {
+  if (!row.length || !rowSum) return Infinity
+  let max = 0
+  if (horizontal) {
+    const rowH = ch * rowSum
+    for (const item of row) {
+      const itemW = cw * (item.pct / rowSum)
+      const r = Math.max(itemW / rowH, rowH / itemW)
+      if (r > max) max = r
+    }
+  } else {
+    const rowW = cw * rowSum
+    for (const item of row) {
+      const itemH = ch * (item.pct / rowSum)
+      const r = Math.max(rowW / itemH, itemH / rowW)
+      if (r > max) max = r
+    }
+  }
+  return max
 }
 
 function calcLayout() {
@@ -270,7 +306,7 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
       <div
         ref="gridRef"
         v-if="store.buckets.length && store.totalAmount"
-        class="flex-1 relative bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden"
+        class="flex-1 relative bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden p-4"
       >
         <!-- 每个方块 -->
         <div
@@ -279,8 +315,8 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
           class="absolute rounded-xl transition-all duration-300 overflow-hidden"
           :class="item._unallocated ? 'border-2 border-dashed border-gray-600/30' : (store.bucketOverflow(item.id) ? 'border-2 border-red-400/50' : 'border border-gray-600/60')"
           :style="{
-            left: item.x + 'px',
-            top: item.y + 'px',
+            left: (item.x + 16) + 'px',
+            top: (item.y + 16) + 'px',
             width: item.w + 'px',
             height: item.h + 'px',
           }"
