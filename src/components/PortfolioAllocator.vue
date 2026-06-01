@@ -1,10 +1,106 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useAllocatorStore } from '../stores/allocator'
+import * as echarts from 'echarts'
 
 const store = useAllocatorStore()
+const chartRef = ref(null)
+let chart = null
+
 onMounted(() => {
   store.init()
+  nextTick(initChart)
+})
+onUnmounted(() => {
+  chart?.dispose()
+})
+
+// ========== ECharts Treemap ==========
+function initChart() {
+  if (!chartRef.value) return
+  chart = echarts.init(chartRef.value)
+  updateChart()
+  chart.on('click', (params) => {
+    if (params.data?.bucketId != null) {
+      store.setDetailBucket(params.data.bucketId)
+    }
+  })
+  window.addEventListener('resize', () => chart?.resize())
+}
+
+// 使用 bucket.percentage 作为 value，ECharts 自动按比例分配面积
+const chartOption = computed(() => {
+  const buckets = store.buckets
+  if (!buckets.length || !store.totalAmount) return null
+
+  const data = buckets.map((b) => ({
+    name: b.name,
+    value: b.percentage,
+    bucketId: b.id,
+    itemStyle: {
+      color: b.color || 'rgba(59,130,246,0.3)',
+      borderColor: store.bucketOverflow(b.id) ? 'rgba(239,68,68,0.5)' : 'rgba(75,85,99,0.6)',
+      borderWidth: store.bucketOverflow(b.id) ? 2 : 1,
+    },
+    label: {
+      formatter: () => {
+        const pct = store.bucketFillRatio(b.id) * 100
+        const overflow = store.bucketOverflow(b.id)
+        const pctText = pct > 0 ? `已用 ${pct.toFixed(0)}%` : ''
+        return `${b.name}\n${b.percentage}%\n¥${fmt(store.bucketTotal(b.id))}${overflow ? '\n⚠️超额' : ''}`
+      },
+    },
+  }))
+
+  return {
+    tooltip: {
+      formatter: (params) => {
+        const b = buckets.find((x) => x.id === params.data.bucketId)
+        if (!b) return ''
+        const limit = store.bucketLimit(b.id)
+        const total = store.bucketTotal(b.id)
+        const overflow = store.bucketOverflow(b.id)
+        return [
+          `<strong>${b.name}</strong>`,
+          `比例：${b.percentage}%`,
+          `额度：¥${fmt(limit)}`,
+          `已分配：¥${fmt(total)}`,
+          overflow ? `<span style="color:#f87171">⚠️ 超额 ${((total / limit - 1) * 100).toFixed(1)}%</span>` : '',
+        ].filter(Boolean).join('<br/>')
+      },
+    },
+    series: [{
+      type: 'treemap',
+      roam: false,
+      nodeClick: false,
+      width: '98%',
+      height: '96%',
+      top: '2%',
+      left: '1%',
+      breadcrumb: { show: false },
+      levels: [{
+        itemStyle: {
+          borderColor: '#1f2937',
+          borderWidth: 3,
+          gapWidth: 3,
+        },
+      }],
+      data,
+    }],
+  }
+})
+
+function updateChart() {
+  if (!chart) return
+  const opt = chartOption.value
+  if (opt) {
+    chart.setOption(opt, true)
+  }
+}
+
+// 数据变化刷新图表
+watch(() => store.buckets.map((b) => b.percentage + b.positionIds.length).join(','), () => {
+  nextTick(updateChart)
 })
 
 // ========== 拖拽 ==========
@@ -22,6 +118,7 @@ function onDrop(e, bucketId) {
   if (dragPosId.value != null) {
     store.dropIntoBucket(dragPosId.value, bucketId)
     dragPosId.value = null
+    updateChart()
   }
 }
 
@@ -35,7 +132,7 @@ function openEditTotal() {
 function saveTotal() {
   store.setTotalAmount(totalInput.value)
   editTotal.value = false
-  nextTick(calcLayout)
+  updateChart()
 }
 
 // ========== 新增品种弹窗 ==========
@@ -51,7 +148,7 @@ function submitBucket() {
   if (!bucketName.value.trim() || !bucketPct.value) return
   store.addBucket(bucketName.value.trim(), Number(bucketPct.value))
   showBucketForm.value = false
-  nextTick(calcLayout)
+  nextTick(updateChart)
 }
 
 // ========== 设置比例弹窗 ==========
@@ -65,7 +162,7 @@ function savePct() {
   if (editingPctId.value != null) {
     store.updateBucketPercentage(editingPctId.value, Number(pctInput.value))
     editingPctId.value = null
-    nextTick(calcLayout)
+    updateChart()
   }
 }
 
@@ -84,13 +181,6 @@ function submitPos() {
   if (!posCode.value.trim() || !posName.value.trim() || !posAmount.value) return
   store.addPosition(posCode.value.trim(), posName.value.trim(), Number(posAmount.value))
   showPosForm.value = false
-}
-
-// ========== 窗口变化重新布局 ==========
-let resizeTimer
-const onResize = () => {
-  clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(calcLayout, 100)
 }
 
 // ========== 详情弹窗 ==========
@@ -113,8 +203,6 @@ const detailOverflow = computed(() =>
 function fmt(v) {
   return Number(v || 0).toFixed(2)
 }
-
-
 </script>
 
 <template>
@@ -126,108 +214,33 @@ function fmt(v) {
         <div class="flex items-center gap-3">
           <span class="text-sm text-gray-400">总金额：</span>
           <template v-if="!editTotal">
-            <span
-              class="text-2xl font-black text-blue-400 cursor-pointer hover:text-blue-300 transition-colors"
-              @click="openEditTotal"
-            >
+            <span class="text-2xl font-black text-blue-400 cursor-pointer hover:text-blue-300 transition-colors" @click="openEditTotal">
               ¥{{ fmt(store.totalAmount) }}
             </span>
-            <button
-              class="w-5 h-5 flex items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition-all text-sm font-bold leading-none"
-              @click="openEditTotal"
-            >+</button>
+            <button class="w-5 h-5 flex items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition-all text-sm font-bold leading-none" @click="openEditTotal">+</button>
           </template>
           <template v-else>
-            <input
-              v-model.number="totalInput"
-              type="number"
-              class="bg-gray-700/50 border border-blue-500 rounded-xl px-3 py-1.5 text-lg font-black text-blue-400 outline-none w-36"
-              @keydown.enter="saveTotal"
-            />
-            <button
-              class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-xs font-bold transition-all"
-              @click="saveTotal"
-            >确定</button>
-            <button
-              class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 text-xs font-bold transition-all"
-              @click="editTotal = false"
-            >取消</button>
+            <input v-model.number="totalInput" type="number" class="bg-gray-700/50 border border-blue-500 rounded-xl px-3 py-1.5 text-lg font-black text-blue-400 outline-none w-36" @keydown.enter="saveTotal" />
+            <button class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-xs font-bold transition-all" @click="saveTotal">确定</button>
+            <button class="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-gray-300 text-xs font-bold transition-all" @click="editTotal = false">取消</button>
           </template>
-          <span class="text-xs text-gray-500 ml-2">
-            已用 {{ store.usedPercentage.toFixed(1) }}%
-          </span>
+          <span class="text-xs text-gray-500 ml-2">已用 {{ store.usedPercentage.toFixed(1) }}%</span>
         </div>
-        <button
-          class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
-          @click="openBucketForm"
-        >
-          + 新增品种
-        </button>
+        <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95" @click="openBucketForm">+ 新增品种</button>
       </div>
 
-      <!-- 热力图容器（纯 CSS flex 布局） -->
+      <!-- ECharts Treemap -->
       <div
+        ref="chartRef"
         v-if="store.buckets.length && store.totalAmount"
-        class="flex-1 flex flex-wrap content-start gap-2 bg-gray-800/20 border border-gray-700/30 rounded-2xl p-2 overflow-y-auto"
-      >
-        <div
-          v-for="bucket in store.buckets"
-          :key="bucket.id"
-          class="relative rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg group"
-          :class="store.bucketOverflow(bucket.id) ? 'border-2 border-red-400/50' : 'border border-gray-600/60'"
-          :style="{ width: bucket.percentage + '%', aspectRatio: '1 / 1', minWidth: '80px' }"
-          @dragover="onDragOver"
-          @drop="(e) => onDrop(e, bucket.id)"
-          @click="store.setDetailBucket(bucket.id)"
-        >
-          <!-- 背景色 -->
-          <div class="absolute inset-0 rounded-xl" :style="{ backgroundColor: bucket.color || 'rgba(59,130,246,0.15)' }" />
-          <!-- 已分配填充 -->
-          <div v-if="store.bucketTotal(bucket.id) && !store.bucketOverflow(bucket.id)" class="absolute bottom-0 left-0 right-0 bg-black/15" :style="{ height: (store.bucketFillRatio(bucket.id) * 100) + '%' }" />
-          <!-- 超额遮罩 -->
-          <div v-if="store.bucketOverflow(bucket.id)" class="absolute inset-0 bg-red-500/20" />
-
-          <div class="relative z-10 flex flex-col items-center justify-center h-full p-2 text-center">
-            <div class="text-sm font-black text-gray-100 truncate max-w-full leading-tight">{{ bucket.name }}</div>
-            <div class="text-xs text-gray-500 font-mono mt-0.5">{{ bucket.percentage }}%</div>
-            <div class="text-base font-black font-mono mt-1" :class="store.bucketOverflow(bucket.id) ? 'text-red-400' : (store.bucketTotal(bucket.id) > 0 ? 'text-green-400' : 'text-gray-500')">
-              ¥{{ fmt(store.bucketTotal(bucket.id)) }}
-            </div>
-            <div class="w-3/4 h-1 rounded-full bg-gray-700/50 overflow-hidden mt-1">
-              <div class="h-full rounded-full transition-all duration-500" :class="store.bucketOverflow(bucket.id) ? 'bg-red-400' : 'bg-blue-500'" :style="{ width: (store.bucketFillRatio(bucket.id) * 100) + '%' }" />
-            </div>
-          </div>
-
-          <!-- 操作按钮 -->
-          <div class="absolute top-1 left-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-400 hover:text-blue-400 text-xs font-bold" title="设置比例" @click.stop="openPctEdit(bucket)">%</button>
-            <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-500 hover:text-red-400" title="删除" @click.stop="store.removeBucket(bucket.id)">
-              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- 未分配占位 -->
-        <div
-          v-if="store.usedPercentage < 100"
-          class="relative rounded-xl border-2 border-dashed border-gray-600/30 flex flex-col items-center justify-center text-gray-600"
-          :style="{ width: (100 - store.usedPercentage) + '%', aspectRatio: '1 / 1', minWidth: '80px' }"
-        >
-          <svg class="w-8 h-8 mb-1 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span class="text-xs font-mono">{{ (100 - store.usedPercentage).toFixed(1) }}% 未分配</span>
-        </div>
-      </div>
+        class="flex-1 bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden"
+        style="min-height: 400px;"
+      />
 
       <!-- 空状态 -->
-      <div
-        v-else
-        class="flex-1 flex flex-col items-center justify-center bg-gray-800/30 border border-gray-700/30 rounded-2xl text-gray-500"
-      >
+      <div v-else class="flex-1 flex flex-col items-center justify-center bg-gray-800/30 border border-gray-700/30 rounded-2xl text-gray-500" style="min-height: 400px;">
         <svg class="w-16 h-16 mb-4 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
+          <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" />
         </svg>
         <p class="text-sm mb-1">先设置总金额，再新增品种</p>
         <p class="text-xs text-gray-600">品种比例之和不超过 100%</p>
@@ -238,13 +251,8 @@ function fmt(v) {
     <div class="bg-gray-800/50 border border-gray-700/50 rounded-2xl flex flex-col overflow-hidden" style="width: 20%;">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700/50">
         <h3 class="text-sm font-black text-gray-200">持仓合约</h3>
-        <button
-          class="w-6 h-6 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all text-lg font-bold leading-none"
-          @click="openPosForm"
-          title="新增合约"
-        >+</button>
+        <button class="w-6 h-6 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-all text-lg font-bold leading-none" @click="openPosForm" title="新增合约">+</button>
       </div>
-
       <div class="flex-1 overflow-y-auto divide-y divide-gray-700/30">
         <div
           v-for="pos in store.unassignedPositions"
@@ -259,34 +267,21 @@ function fmt(v) {
           </div>
           <div class="text-xs text-gray-400 mt-0.5">¥{{ fmt(pos.amount) }}</div>
         </div>
-
         <div v-for="b in store.buckets" :key="'h-' + b.id">
-          <div
-            v-for="pos in store.bucketContracts(b.id)"
-            :key="'p-' + pos.id"
-            class="px-4 py-2 opacity-40 hover:opacity-60 transition-opacity"
-            :title="'已分配到: ' + b.name"
-          >
+          <div v-for="pos in store.bucketContracts(b.id)" :key="'p-' + pos.id" class="px-4 py-2 opacity-40 hover:opacity-60 transition-opacity" :title="'已分配到: ' + b.name">
             <div class="flex items-baseline gap-2">
               <span class="text-xs font-bold text-gray-400 truncate">{{ pos.name }}</span>
               <span class="text-xs text-gray-600 font-mono">{{ pos.code }}</span>
             </div>
           </div>
         </div>
-
-        <div v-if="!store.positions.length" class="flex flex-col items-center justify-center py-12 text-gray-500">
-          <p class="text-xs">暂无合约，点击 + 新增</p>
-        </div>
+        <div v-if="!store.positions.length" class="flex flex-col items-center justify-center py-12 text-gray-500"><p class="text-xs">暂无合约，点击 + 新增</p></div>
       </div>
     </div>
   </div>
 
   <!-- 新增品种弹窗 -->
-  <div
-    v-if="showBucketForm"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="showBucketForm = false"
-  >
+  <div v-if="showBucketForm" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="showBucketForm = false">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn">
       <div class="p-5 border-b border-gray-700/50"><h3 class="text-base font-black text-gray-100">新增品种</h3></div>
       <div class="p-5 space-y-4">
@@ -301,11 +296,7 @@ function fmt(v) {
   </div>
 
   <!-- 设置比例弹窗 -->
-  <div
-    v-if="editingPctId != null"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="editingPctId = null"
-  >
+  <div v-if="editingPctId != null" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="editingPctId = null">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn">
       <div class="p-5 border-b border-gray-700/50"><h3 class="text-base font-black text-gray-100">设置比例</h3></div>
       <div class="p-5">
@@ -321,11 +312,7 @@ function fmt(v) {
   </div>
 
   <!-- 新增合约弹窗 -->
-  <div
-    v-if="showPosForm"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="showPosForm = false"
-  >
+  <div v-if="showPosForm" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="showPosForm = false">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn">
       <div class="p-5 border-b border-gray-700/50"><h3 class="text-base font-black text-gray-100">新增合约</h3></div>
       <div class="p-5 space-y-4">
@@ -341,11 +328,7 @@ function fmt(v) {
   </div>
 
   <!-- 方块详情弹窗 -->
-  <div
-    v-if="store.detailBucketId != null"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="store.clearDetail()"
-  >
+  <div v-if="store.detailBucketId != null" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="store.clearDetail()">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fadeIn">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
         <div>
