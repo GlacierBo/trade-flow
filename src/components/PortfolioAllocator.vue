@@ -116,8 +116,8 @@ function calcLayout() {
       return
     }
     const rect = gridRef.value.getBoundingClientRect()
-    const cw = Math.max(rect.width - 32, 100)
-    const ch = Math.max(rect.height - 32, 100)
+    const cw = Math.max(rect.width - 4, 100)
+    const ch = Math.max(rect.height - 4, 100)
     if (cw <= 0 || ch <= 0) return
 
   const usedPct = store.usedPercentage
@@ -257,9 +257,9 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
 </script>
 
 <template>
-  <div class="flex gap-5 h-[calc(100vh-6rem)]">
+  <div class="flex gap-5" style="height: calc(100vh - 8rem); min-height: 500px;">
     <!-- 左侧 80% -->
-    <div class="flex-[4] flex flex-col gap-4 min-w-0">
+    <div class="flex flex-col gap-4" style="width: 78%;">
       <!-- 总金额 -->
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
@@ -308,7 +308,7 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
       <div
         ref="gridRef"
         v-if="store.buckets.length && store.totalAmount"
-        class="flex-1 relative bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden p-4"
+        class="flex-1 relative bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden"
       >
         <!-- 每个方块 -->
         <div
@@ -317,8 +317,8 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
           class="absolute rounded-xl transition-all duration-300 overflow-hidden"
           :class="item._unallocated ? 'border-2 border-dashed border-gray-600/30' : (store.bucketOverflow(item.id) ? 'border-2 border-red-400/50' : 'border border-gray-600/60')"
           :style="{
-            left: (item.x + 16) + 'px',
-            top: (item.y + 16) + 'px',
+            left: item.x + 'px',
+            top: item.y + 'px',
             width: item.w + 'px',
             height: item.h + 'px',
           }"
@@ -383,7 +383,7 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
     </div>
 
     <!-- 右侧 20% -->
-    <div class="flex-1 bg-gray-800/50 border border-gray-700/50 rounded-2xl flex flex-col overflow-hidden">
+    <div class="bg-gray-800/50 border border-gray-700/50 rounded-2xl flex flex-col overflow-hidden" style="width: 20%;">
       <div class="flex items-center justify-between px-4 py-3 border-b border-gray-700/50">
         <h3 class="text-sm font-black text-gray-200">持仓合约</h3>
         <button
