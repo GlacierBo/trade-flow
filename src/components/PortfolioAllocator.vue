@@ -9,10 +9,29 @@ let chart = null
 
 onMounted(() => {
   store.init()
-  nextTick(initChart)
+  tryInit()
 })
 onUnmounted(() => {
   chart?.dispose()
+})
+
+// 等容器渲染后再初始化图表
+function tryInit() {
+  if (chart) return
+  nextTick(() => {
+    if (!chartRef.value) {
+      // 容器还没渲染，等数据变化
+      return
+    }
+    initChart()
+  })
+}
+
+// 数据变化时初始化或更新图表
+watch([() => store.buckets.length, () => store.totalAmount], () => {
+  if (!chart && store.buckets.length && store.totalAmount) {
+    tryInit()
+  }
 })
 
 // ========== ECharts Treemap ==========
@@ -33,26 +52,39 @@ const chartOption = computed(() => {
   const buckets = store.buckets
   if (!buckets.length || !store.totalAmount) return null
 
-  const data = buckets.map((b) => ({
-    name: b.name,
-    value: b.percentage,
-    bucketId: b.id,
-    itemStyle: {
-      color: b.color || 'rgba(59,130,246,0.3)',
-      borderColor: store.bucketOverflow(b.id) ? 'rgba(239,68,68,0.5)' : 'rgba(75,85,99,0.6)',
-      borderWidth: store.bucketOverflow(b.id) ? 2 : 1,
-    },
-    label: {
-      formatter: () => {
-        const lines = [b.name, `${b.percentage}%`]
-        if (showAmounts.value) {
-          lines.push(`¥${fmt(store.bucketTotal(b.id))}`)
-        }
-        if (store.bucketOverflow(b.id)) lines.push('⚠️超额')
-        return lines.join('\n')
+  const data = buckets.map((b) => {
+    const fillRatio = store.bucketFillRatio(b.id)
+    const overflow = store.bucketOverflow(b.id)
+    const baseColor = b.color || 'rgba(59,130,246,0.3)'
+    // 提取 rgb，按填充比例控制透明度
+    const rgb = baseColor.replace(/rgba?\(([^)]+)\).*/, '$1').split(',').slice(0, 3).join(',')
+    const alpha = overflow ? 0.2 : Math.max(0.04, 0.08 + fillRatio * 0.25)
+
+    return {
+      name: b.name,
+      value: b.percentage,
+      bucketId: b.id,
+      itemStyle: {
+        color: overflow ? 'rgba(239,68,68,0.2)' : `rgba(${rgb},${alpha})`,
+        borderColor: overflow ? 'rgba(239,68,68,0.5)' : 'rgba(75,85,99,0.6)',
+        borderWidth: overflow ? 2 : 1,
       },
-    },
-  }))
+      label: {
+        formatter: () => {
+          const lines = [b.name, `${b.percentage}%`]
+          if (showAmounts.value) {
+            const total = store.bucketTotal(b.id)
+            lines.push(total > 0 ? `¥${fmt(total)}` : '¥0')
+            if (total > 0) {
+              lines.push(`─ ${(fillRatio * 100).toFixed(0)}%`)
+            }
+          }
+          if (overflow) lines.push('⚠️超额')
+          return lines.join('\n')
+        },
+      },
+    }
+  })
 
   return {
     tooltip: {
@@ -114,21 +146,41 @@ function toggleAmounts() {
 
 // ========== 拖拽 ==========
 const dragPosId = ref(null)
+const dropPicker = ref({ show: false, x: 0, y: 0, posId: null })
+
 function onDragStart(e, posId) {
   dragPosId.value = posId
   e.dataTransfer.effectAllowed = 'move'
 }
-function onDragOver(e) {
+
+function onChartDragOver(e) {
   e.preventDefault()
   e.dataTransfer.dropEffect = 'move'
 }
-function onDrop(e, bucketId) {
+
+function onChartDrop(e) {
   e.preventDefault()
-  if (dragPosId.value != null) {
-    store.dropIntoBucket(dragPosId.value, bucketId)
-    dragPosId.value = null
+  if (dragPosId.value == null || !store.buckets.length) return
+  // 显示品种选择器
+  dropPicker.value = {
+    show: true,
+    x: e.clientX,
+    y: e.clientY,
+    posId: dragPosId.value,
+  }
+  dragPosId.value = null
+}
+
+function pickBucket(bucketId) {
+  if (dropPicker.value.posId != null) {
+    store.dropIntoBucket(dropPicker.value.posId, bucketId)
     updateChart()
   }
+  dropPicker.value.show = false
+}
+
+function closePicker() {
+  dropPicker.value.show = false
 }
 
 // ========== 总金额编辑 ==========
@@ -226,9 +278,9 @@ function fmt(v) {
             <span class="text-2xl font-black text-blue-400 cursor-pointer hover:text-blue-300 transition-colors" @click="openEditTotal">
               {{ showAmounts ? '¥' + fmt(store.totalAmount) : '***' }}
             </span>
-            <button class="w-5 h-5 flex items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition-all text-sm font-bold leading-none" @click="openEditTotal">+</button>
+            <button class="w-6 h-6 flex items-center justify-center rounded-lg bg-gray-700/50 text-gray-400 hover:text-blue-400 hover:bg-gray-700 transition-all text-sm font-bold leading-none" @click="openEditTotal">+</button>
             <button
-              class="w-7 h-7 flex items-center justify-center rounded-lg transition-all text-sm"
+              class="w-6 h-6 flex items-center justify-center rounded-lg transition-all text-sm"
               :class="showAmounts ? 'bg-gray-700/50 text-gray-400 hover:text-amber-400' : 'bg-amber-500/20 text-amber-400'"
               :title="showAmounts ? '隐藏金额' : '显示金额'"
               @click="toggleAmounts"
@@ -251,9 +303,31 @@ function fmt(v) {
       <div
         ref="chartRef"
         v-if="store.buckets.length && store.totalAmount"
-        class="flex-1 bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden"
+        class="flex-1 bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden relative"
         style="min-height: 400px;"
-      />
+        @dragover="onChartDragOver"
+        @drop="onChartDrop"
+      >
+        <!-- 拖放选择器 -->
+        <template v-if="dropPicker.show">
+          <div class="fixed inset-0 z-40" @click="closePicker" />
+          <div
+            class="fixed z-50 bg-gray-800 border border-gray-600 rounded-xl shadow-2xl overflow-hidden py-1"
+            :style="{ left: dropPicker.x + 'px', top: dropPicker.y + 'px' }"
+          >
+            <div class="px-3 py-2 text-xs text-gray-400 border-b border-gray-700">分配到品种：</div>
+            <button
+              v-for="b in store.buckets"
+              :key="b.id"
+              class="w-full px-4 py-2 text-left text-sm text-gray-200 hover:bg-gray-700 transition-colors flex items-center gap-2 whitespace-nowrap"
+              @click="pickBucket(b.id)"
+            >
+              <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: b.color }" />
+              {{ b.name }} ({{ b.percentage }}%)
+            </button>
+          </div>
+        </template>
+      </div>
 
       <!-- 空状态 -->
       <div v-else class="flex-1 flex flex-col items-center justify-center bg-gray-800/30 border border-gray-700/30 rounded-2xl text-gray-500" style="min-height: 400px;">
