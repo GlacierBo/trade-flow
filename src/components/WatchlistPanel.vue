@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { useWatchlistStore } from '../stores/watchlist'
 
-const emit = defineEmits(['stock-click', 'toggle-watch'])
 const store = useWatchlistStore()
 
 const lastUpdatedText = computed(() => {
@@ -66,9 +65,8 @@ function fmtPercent(v) {
       <div
         v-for="item in store.items"
         :key="item.code"
-        class="flex items-center gap-3 px-5 py-3 border-l-4 cursor-pointer transition-colors hover:bg-gray-700/30"
+        class="flex items-center gap-3 px-5 py-3 border-l-4 transition-colors bg-gray-800/30"
         :class="bgClass(changePercent(item))"
-        @click="emit('stock-click', { code: item.code, name: item.name, now: item.latestPrice, ...item })"
       >
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline gap-2">
@@ -87,7 +85,7 @@ function fmtPercent(v) {
         <button
           class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
           :title="'删除 ' + item.name"
-          @click.stop="store.remove(item.code)"
+          @click="store.remove(item.code)"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />

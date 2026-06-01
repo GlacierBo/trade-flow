@@ -16,7 +16,14 @@
       "Bash(curl -s -I -X OPTIONS \"https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.510500&fields=f12,f14,f2,f3,f15,f16,f18\")",
       "Bash(node *)",
       "Bash(curl *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(git rm *)",
+      "Bash(npm uninstall *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(findstr \":3001\")",
+      "Bash(findstr LISTEN)",
+      "Bash(taskkill /F /PID 9272)",
+      "Bash(taskkill //F //PID 9272)"
     ]
   }
 }

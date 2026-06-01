@@ -33,7 +33,7 @@
 | Frontend | Backend | Build |
 |----------|---------|-------|
 | Vue 3 (Composition API) | Supabase (PostgreSQL) | Vite 5 |
-| Pinia 2 | 东方财富行情 API（浏览器直连） | Tailwind CSS 3 |
+| Pinia 2 | 东方财富行情 API（通过本地代理服务） | Tailwind CSS 3 |
 | No router (SPA view switching) | DB Triggers for auto recalc | PostCSS |
 
 ## Quick Start

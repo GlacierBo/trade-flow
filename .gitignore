@@ -142,3 +142,6 @@ cython_debug/
 # Node.js
 node_modules/
 dist/
+
+# Stock API proxy server (standalone project)
+server/
