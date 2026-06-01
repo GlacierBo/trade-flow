@@ -1,147 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAllocatorStore } from '../stores/allocator'
 
 const store = useAllocatorStore()
 onMounted(() => {
   store.init()
-  nextTick(calcLayout)
-  window.addEventListener('resize', onResize)
 })
-onUnmounted(() => {
-  window.removeEventListener('resize', onResize)
-})
-
-// ========== 热力图布局 ==========
-const gridRef = ref(null)
-const layout = ref([])
-
-// Squarified Treemap 算法（板块热力图）
-const GAP = 4 // 块间距
-function squarify(items, x, y, w, h) {
-  if (!items.length || w <= 0 || h <= 0) return
-  const total = items.reduce((s, i) => s + i.pct, 0)
-  if (!total) return
-
-  // 归一化 pct 为总和 = 1
-  const sorted = [...items].sort((a, b) => b.pct - a.pct)
-  const data = sorted.map(i => ({ ...i, pct: i.pct / total }))
-
-  layoutItems(data, x, y, w, h)
-}
-
-function layoutItems(items, x, y, w, h) {
-  if (!items.length || w * h <= 0) return
-
-  // 沿较长的边方向排列（短边作为行/列宽度）
-  const horizontal = w >= h
-  let remaining = [...items]
-  let cx = x, cy = y, cw = w, ch = h
-
-  while (remaining.length > 0) {
-    let row = []
-    let rowSum = 0
-    let bestScore = Infinity
-
-    // 贪心构建行：逐个加入直到宽高比变差
-    for (let i = 0; i < remaining.length; i++) {
-      const testRow = [...row, remaining[i]]
-      const testSum = rowSum + remaining[i].pct
-      const score = worstRatio(testRow, testSum, cw, ch, horizontal)
-
-      if (i > 0 && score > bestScore) break
-      bestScore = score
-      row = testRow
-      rowSum = testSum
-    }
-
-    // 放置这一行/列（留间隙）
-    if (horizontal) {
-      const rowH = ch * rowSum
-      let xx = cx
-      for (const item of row) {
-        const itemW = cw * (item.pct / rowSum)
-        item.x = xx + GAP/2
-        item.y = cy + GAP/2
-        item.w = Math.max(0, itemW - GAP)
-        item.h = Math.max(0, rowH - GAP)
-        xx += itemW
-      }
-      cy += rowH
-      ch -= rowH
-    } else {
-      const rowW = cw * rowSum
-      let yy = cy
-      for (const item of row) {
-        const itemH = ch * (item.pct / rowSum)
-        item.x = cx + GAP/2
-        item.y = yy + GAP/2
-        item.w = Math.max(0, rowW - GAP)
-        item.h = Math.max(0, itemH - GAP)
-        yy += itemH
-      }
-      cx += rowW
-      cw -= rowW
-    }
-
-    remaining = remaining.slice(row.length)
-  }
-}
-
-function worstRatio(row, rowSum, cw, ch, horizontal) {
-  if (!row.length || !rowSum) return Infinity
-  let max = 0
-  if (horizontal) {
-    const rowH = ch * rowSum
-    for (const item of row) {
-      const itemW = cw * (item.pct / rowSum)
-      const r = Math.max(itemW / rowH, rowH / itemW)
-      if (r > max) max = r
-    }
-  } else {
-    const rowW = cw * rowSum
-    for (const item of row) {
-      const itemH = ch * (item.pct / rowSum)
-      const r = Math.max(rowW / itemH, itemH / rowW)
-      if (r > max) max = r
-    }
-  }
-  return max
-}
-
-function calcLayout() {
-  requestAnimationFrame(() => {
-    if (!gridRef.value || !store.buckets.length || !store.totalAmount) {
-      layout.value = []
-      return
-    }
-    const rect = gridRef.value.getBoundingClientRect()
-    const cw = Math.max(rect.width - 4, 100)
-    const ch = Math.max(rect.height - 4, 100)
-    if (cw <= 0 || ch <= 0) return
-
-  const usedPct = store.usedPercentage
-  const items = store.buckets.map((b) => ({
-    id: b.id,
-    pct: b.percentage || 0.01,
-    x: 0, y: 0, w: 0, h: 0,
-    _unallocated: false,
-  }))
-
-  // 不足 100% 时添加未分配占位块
-  if (usedPct < 100) {
-    items.push({
-      id: '__unallocated__',
-      pct: 100 - usedPct,
-      x: 0, y: 0, w: 0, h: 0,
-      _unallocated: true,
-    })
-  }
-
-  squarify(items, 0, 0, cw, ch)
-    layout.value = items
-  })
-}
 
 // ========== 拖拽 ==========
 const dragPosId = ref(null)
@@ -250,10 +114,7 @@ function fmt(v) {
   return Number(v || 0).toFixed(2)
 }
 
-// 品种变更自动重排
-watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','), () => {
-  nextTick(calcLayout)
-})
+
 </script>
 
 <template>
@@ -304,67 +165,58 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
         </button>
       </div>
 
-      <!-- 热力图容器 -->
+      <!-- 热力图容器（纯 CSS flex 布局） -->
       <div
-        ref="gridRef"
         v-if="store.buckets.length && store.totalAmount"
-        class="flex-1 relative bg-gray-800/20 border border-gray-700/30 rounded-2xl overflow-hidden"
+        class="flex-1 flex flex-wrap content-start gap-2 bg-gray-800/20 border border-gray-700/30 rounded-2xl p-2 overflow-y-auto"
       >
-        <!-- 每个方块 -->
         <div
-          v-for="item in layout"
-          :key="item.id"
-          class="absolute rounded-xl transition-all duration-300 overflow-hidden"
-          :class="item._unallocated ? 'border-2 border-dashed border-gray-600/30' : (store.bucketOverflow(item.id) ? 'border-2 border-red-400/50' : 'border border-gray-600/60')"
-          :style="{
-            left: item.x + 'px',
-            top: item.y + 'px',
-            width: item.w + 'px',
-            height: item.h + 'px',
-          }"
+          v-for="bucket in store.buckets"
+          :key="bucket.id"
+          class="relative rounded-xl overflow-hidden cursor-pointer transition-all hover:shadow-lg group"
+          :class="store.bucketOverflow(bucket.id) ? 'border-2 border-red-400/50' : 'border border-gray-600/60'"
+          :style="{ width: bucket.percentage + '%', aspectRatio: '1 / 1', minWidth: '80px' }"
           @dragover="onDragOver"
-          @drop="(e) => onDrop(e, item.id)"
-          @click="!item._unallocated && store.setDetailBucket(item.id)"
+          @drop="(e) => onDrop(e, bucket.id)"
+          @click="store.setDetailBucket(bucket.id)"
         >
-          <!-- 真实品种 -->
-          <template v-if="!item._unallocated">
-            <!-- 背景色 -->
-            <div
-              class="absolute inset-0 rounded-xl transition-all duration-500"
-              :style="{ backgroundColor: store.buckets.find(b => b.id === item.id)?.color || 'rgba(59,130,246,0.15)' }"
-            />
-            <!-- 已分配填充加深 -->
-            <div v-if="store.bucketTotal(item.id) && !store.bucketOverflow(item.id)" class="absolute bottom-0 left-0 right-0 rounded-b-xl bg-black/15 transition-all duration-500" :style="{ height: (store.bucketFillRatio(item.id) * 100) + '%' }" />
-            <!-- 超额红色覆盖 -->
-            <div v-if="store.bucketOverflow(item.id)" class="absolute inset-0 rounded-xl bg-red-500/20" />
+          <!-- 背景色 -->
+          <div class="absolute inset-0 rounded-xl" :style="{ backgroundColor: bucket.color || 'rgba(59,130,246,0.15)' }" />
+          <!-- 已分配填充 -->
+          <div v-if="store.bucketTotal(bucket.id) && !store.bucketOverflow(bucket.id)" class="absolute bottom-0 left-0 right-0 bg-black/15" :style="{ height: (store.bucketFillRatio(bucket.id) * 100) + '%' }" />
+          <!-- 超额遮罩 -->
+          <div v-if="store.bucketOverflow(bucket.id)" class="absolute inset-0 bg-red-500/20" />
 
-            <div class="relative z-10 flex flex-col items-center justify-center h-full p-2 text-center">
-              <div class="text-sm font-black text-gray-100 truncate max-w-full leading-tight">{{ store.buckets.find(b => b.id === item.id)?.name }}</div>
-              <div class="text-xs text-gray-500 font-mono mt-0.5">{{ store.buckets.find(b => b.id === item.id)?.percentage }}%</div>
-              <div class="text-base font-black font-mono mt-1" :class="store.bucketOverflow(item.id) ? 'text-red-400' : (store.bucketTotal(item.id) > 0 ? 'text-green-400' : 'text-gray-500')">
-                ¥{{ fmt(store.bucketTotal(item.id)) }}
-              </div>
-              <div class="w-3/4 h-1 rounded-full bg-gray-700/50 overflow-hidden mt-1">
-                <div class="h-full rounded-full transition-all duration-500" :class="store.bucketOverflow(item.id) ? 'bg-red-400' : 'bg-blue-500'" :style="{ width: (store.bucketFillRatio(item.id) * 100) + '%' }" />
-              </div>
+          <div class="relative z-10 flex flex-col items-center justify-center h-full p-2 text-center">
+            <div class="text-sm font-black text-gray-100 truncate max-w-full leading-tight">{{ bucket.name }}</div>
+            <div class="text-xs text-gray-500 font-mono mt-0.5">{{ bucket.percentage }}%</div>
+            <div class="text-base font-black font-mono mt-1" :class="store.bucketOverflow(bucket.id) ? 'text-red-400' : (store.bucketTotal(bucket.id) > 0 ? 'text-green-400' : 'text-gray-500')">
+              ¥{{ fmt(store.bucketTotal(bucket.id)) }}
             </div>
-
-            <!-- 操作按钮 -->
-            <div class="absolute top-1 left-1 flex gap-1 opacity-0 hover:opacity-100 transition-opacity">
-              <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-400 hover:text-blue-400 text-xs font-bold" title="设置比例" @click.stop="openPctEdit(store.buckets.find(b => b.id === item.id))">%</button>
-              <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-500 hover:text-red-400" title="删除" @click.stop="store.removeBucket(item.id); nextTick(calcLayout)">
-                <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
+            <div class="w-3/4 h-1 rounded-full bg-gray-700/50 overflow-hidden mt-1">
+              <div class="h-full rounded-full transition-all duration-500" :class="store.bucketOverflow(bucket.id) ? 'bg-red-400' : 'bg-blue-500'" :style="{ width: (store.bucketFillRatio(bucket.id) * 100) + '%' }" />
             </div>
-          </template>
-
-          <!-- 未分配占位 -->
-          <div v-else class="flex flex-col items-center justify-center h-full text-gray-600">
-            <svg class="w-8 h-8 mb-1 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            <span class="text-xs font-mono">{{ (100 - store.usedPercentage).toFixed(1) }}% 未分配</span>
           </div>
+
+          <!-- 操作按钮 -->
+          <div class="absolute top-1 left-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-400 hover:text-blue-400 text-xs font-bold" title="设置比例" @click.stop="openPctEdit(bucket)">%</button>
+            <button class="w-5 h-5 flex items-center justify-center rounded bg-gray-800/80 text-gray-500 hover:text-red-400" title="删除" @click.stop="store.removeBucket(bucket.id)">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- 未分配占位 -->
+        <div
+          v-if="store.usedPercentage < 100"
+          class="relative rounded-xl border-2 border-dashed border-gray-600/30 flex flex-col items-center justify-center text-gray-600"
+          :style="{ width: (100 - store.usedPercentage) + '%', aspectRatio: '1 / 1', minWidth: '80px' }"
+        >
+          <svg class="w-8 h-8 mb-1 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          <span class="text-xs font-mono">{{ (100 - store.usedPercentage).toFixed(1) }}% 未分配</span>
         </div>
       </div>
 
