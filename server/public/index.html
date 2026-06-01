@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeFlow 股票行情</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #111827; color: #e5e7eb; min-height: 100vh;
+}
+.container { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+/* Header */
+.header { margin-bottom: 24px; }
+.header h1 { font-size: 20px; font-weight: 800; }
+.header h1 span { background: linear-gradient(135deg, #60A5FA, #93C5FD); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header p { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+/* Search bar */
+.search-box { display: flex; gap: 10px; margin-bottom: 24px; }
+.search-box input {
+  flex: 1; padding: 10px 14px; border-radius: 12px; border: 1px solid #374151;
+  background: #1f2937; color: #e5e7eb; font-size: 14px; outline: none;
+}
+.search-box input:focus { border-color: #3b82f6; }
+.search-box input::placeholder { color: #6b7280; }
+.search-box button {
+  padding: 10px 24px; border-radius: 12px; border: none;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: opacity 0.2s;
+}
+.search-box button:hover { opacity: 0.9; }
+.search-box button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Section */
+.section {
+  background: rgba(31,41,55,0.5); border: 1px solid rgba(55,65,81,0.5);
+  border-radius: 16px; overflow: hidden; margin-bottom: 24px;
+}
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid rgba(55,65,81,0.5);
+}
+.section-header h2 { font-size: 14px; font-weight: 800; color: #d1d5db; }
+.badge {
+  background: rgba(59,130,246,0.2); color: #60a5fa;
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  margin-left: 6px;
+}
+.section-meta { font-size: 12px; color: #6b7280; }
+.section-meta .loading { color: #60a5fa; }
+
+/* Stock Card / Item */
+.stock-item {
+  display: flex; align-items: center; padding: 12px 20px;
+  border-bottom: 1px solid rgba(55,65,81,0.3); border-left: 4px solid #4b5563;
+  transition: background 0.15s; cursor: pointer;
+}
+.stock-item:hover { background: rgba(55,65,81,0.3); }
+.stock-item:last-child { border-bottom: none; }
+.stock-item.up { border-left-color: rgba(239,68,68,0.6); }
+.stock-item.down { border-left-color: rgba(34,197,94,0.6); }
+.stock-info { flex: 1; min-width: 0; }
+.stock-name { font-size: 14px; font-weight: 700; color: #e5e7eb; }
+.stock-code { font-size: 11px; color: #6b7280; font-family: monospace; margin-left: 6px; }
+.stock-price { text-align: right; }
+.stock-now { font-size: 15px; font-weight: 700; font-family: monospace; }
+.stock-change { font-size: 12px; font-family: monospace; }
+.text-red { color: #f87171; }
+.text-green { color: #4ade80; }
+.text-gray { color: #9ca3af; }
+
+.stock-detail {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: rgba(55,65,81,0.3);
+}
+.detail-item { padding: 12px 16px; background: rgba(31,41,55,0.5); }
+.detail-label { font-size: 11px; color: #6b7280; margin-bottom: 2px; }
+.detail-value { font-size: 14px; font-weight: 600; font-family: monospace; color: #d1d5db; }
+
+/* Actions */
+.action-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; border: none; cursor: pointer; flex-shrink: 0;
+  transition: all 0.15s;
+}
+.action-btn.add { color: #6b7280; background: transparent; margin-left: 8px; }
+.action-btn.add:hover { color: #f59e0b; background: rgba(245,158,11,0.1); }
+.action-btn.add.active { color: #f59e0b; }
+.action-btn.remove { color: #6b7280; background: transparent; margin-left: 8px; }
+.action-btn.remove:hover { color: #f87171; background: rgba(239,68,68,0.1); }
+
+/* States */
+.empty-state { text-align: center; padding: 48px 20px; color: #6b7280; }
+.empty-state svg { margin-bottom: 12px; opacity: 0.3; }
+.empty-state p { font-size: 13px; }
+.error-state { text-align: center; padding: 24px 20px; }
+.error-state p { color: #f87171; font-size: 13px; }
+
+/* spinner */
+.spinner { width: 24px; height: 24px; border: 2px solid #374151; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 24px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .stock-detail { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="header">
+    <h1><span>TradeFlow</span> 股票行情</h1>
+    <p>Stock Query & Watchlist Management</p>
+  </div>
+
+  <!-- Search -->
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="输入股票代码或名称，如 SH510500、格力电器" />
+    <button id="searchBtn">搜索</button>
+  </div>
+
+  <!-- Search Results -->
+  <div class="section" id="resultsSection" style="display:none">
+    <div class="section-header">
+      <h2>搜索结果 <span class="badge" id="resultCount">0</span></h2>
+    </div>
+    <div id="resultsContainer"></div>
+  </div>
+
+  <!-- Watchlist -->
+  <div class="section" id="watchlistSection">
+    <div class="section-header">
+      <div><h2>⭐ 我的自选 <span class="badge" id="watchlistCount">0</span></h2></div>
+      <div class="section-meta">
+        <span id="refreshStatus"></span>
+        <button id="refreshBtn" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:12px;margin-left:8px;">⟳ 刷新</button>
+      </div>
+    </div>
+    <div id="watchlistContainer"></div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+
+// State
+let watchlist = [];
+let searchResults = [];
+
+// DOM refs
+const $ = id => document.getElementById(id);
+const searchInput = $('searchInput');
+const searchBtn = $('searchBtn');
+const resultsSection = $('resultsSection');
+const resultsContainer = $('resultsContainer');
+const resultCount = $('resultCount');
+const watchlistContainer = $('watchlistContainer');
+const watchlistCount = $('watchlistCount');
+const refreshStatus = $('refreshStatus');
+const refreshBtn = $('refreshBtn');
+
+// Debounce
+let searchTimer;
+searchInput.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(doSearch, 500);
+});
+searchBtn.addEventListener('click', doSearch);
+searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+refreshBtn.addEventListener('click', refreshWatchlist);
+
+// === API functions ===
+async function api(url, opts = {}) {
+  const res = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+  const data = await res.json();
+  if (!data.success) throw new Error(data.error || '请求失败');
+  return data.data;
+}
+
+async function doSearch() {
+  const q = searchInput.value.trim();
+  if (!q) return;
+  searchBtn.disabled = true;
+  searchBtn.textContent = '搜索中...';
+  try {
+    searchResults = await api(`${API}/stocks/search?q=${encodeURIComponent(q)}`);
+    renderResults();
+    resultCount.textContent = searchResults.length;
+    resultsSection.style.display = searchResults.length ? '' : 'none';
+  } catch (err) {
+    resultsContainer.innerHTML = `<div class="error-state"><p>${err.message}</p></div>`;
+    resultsSection.style.display = '';
+  } finally {
+    searchBtn.disabled = false;
+    searchBtn.textContent = '搜索';
+  }
+}
+
+async function loadWatchlist() {
+  try {
+    const items = await api(`${API}/watchlist/refresh`, { method: 'POST' });
+    watchlist = items || [];
+  } catch {
+    watchlist = [];
+  }
+  renderWatchlist();
+}
+
+async function refreshWatchlist() {
+  refreshStatus.textContent = '刷新中...';
+  try {
+    const items = await api(`${API}/watchlist/refresh`, { method: 'POST' });
+    watchlist = items || [];
+  } catch (err) {
+    refreshStatus.textContent = err.message;
+  }
+  renderWatchlist();
+}
+
+async function addToWatchlist(code, name) {
+  try {
+    await api(`${API}/watchlist`, { method: 'POST', body: JSON.stringify({ code, name }) });
+    await loadWatchlist();
+    renderResults(); // update button states
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function removeFromWatchlist(code) {
+  try {
+    await api(`${API}/watchlist/${code}`, { method: 'DELETE' });
+    watchlist = watchlist.filter(i => i.code !== code);
+    renderWatchlist();
+    renderResults();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// === Render ===
+function pctClass(pct) {
+  if (pct > 0) return 'text-red';
+  if (pct < 0) return 'text-green';
+  return 'text-gray';
+}
+function fmtPrice(v) { return (v ?? '--') !== '--' ? Number(v).toFixed(2) : '--'; }
+function fmtPercent(v) {
+  if (v === null || v === undefined) return '--';
+  const sign = v > 0 ? '+' : '';
+  return `${sign}${Number(v).toFixed(2)}%`;
+}
+
+function isWatched(code) {
+  return watchlist.some(i => i.code === code);
+}
+
+function stockToHTML(s, showWatchBtn = true) {
+  const pct = s.changePercent ?? 0;
+  const pCls = pctClass(pct);
+  const bgCls = pct > 0 ? 'up' : pct < 0 ? 'down' : '';
+  const watched = isWatched(s.code);
+  const watchBtn = showWatchBtn
+    ? `<button class="action-btn ${watched ? 'active' : 'add'}" onclick="${watched ? `removeFromWatchlist('${s.code}')` : `addToWatchlist('${s.code}','${s.name}')`}" title="${watched ? '取消自选' : '加自选'}">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="${watched ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      </button>`
+    : '';
+
+  return `
+    <div class="stock-item ${bgCls}">
+      <div class="stock-info">
+        <span class="stock-name">${s.name}</span>
+        <span class="stock-code">${s.code}</span>
+      </div>
+      <div class="stock-price">
+        <div class="stock-now ${pCls}">${fmtPrice(s.price)}</div>
+        <div class="stock-change ${pCls}">${fmtPercent(pct)}</div>
+      </div>
+      ${watchBtn}
+    </div>
+    <div class="stock-detail">
+      <div class="detail-item"><div class="detail-label">今开</div><div class="detail-value">${fmtPrice(s.open)}</div></div>
+      <div class="detail-item"><div class="detail-label">最高</div><div class="detail-value ${pctClass(s.high - s.yesterday)}">${fmtPrice(s.high)}</div></div>
+      <div class="detail-item"><div class="detail-label">最低</div><div class="detail-value ${pctClass(s.low - s.yesterday)}">${fmtPrice(s.low)}</div></div>
+      <div class="detail-item"><div class="detail-label">昨收</div><div class="detail-value">${fmtPrice(s.yesterday)}</div></div>
+      <div class="detail-item"><div class="detail-label">成交量</div><div class="detail-value">${s.volume ? (s.volume/10000).toFixed(0) + '万' : '--'}</div></div>
+      <div class="detail-item"><div class="detail-label">成交额</div><div class="detail-value">${s.amount ? (s.amount/100000000).toFixed(2) + '亿' : '--'}</div></div>
+      <div class="detail-item"><div class="detail-label">振幅</div><div class="detail-value">${s.amplitude ? s.amplitude.toFixed(2) + '%' : '--'}</div></div>
+      <div class="detail-item"><div class="detail-label">换手率</div><div class="detail-value">${s.turnoverRate ? s.turnoverRate.toFixed(2) + '%' : '--'}</div></div>
+    </div>`;
+}
+
+function renderResults() {
+  if (!searchResults.length) {
+    resultsSection.style.display = 'none';
+    return;
+  }
+  resultsContainer.innerHTML = searchResults.map(s => stockToHTML(s, true)).join('');
+  resultsSection.style.display = '';
+}
+
+function renderWatchlist() {
+  watchlistCount.textContent = watchlist.length;
+  refreshStatus.textContent = '';
+
+  if (!watchlist.length) {
+    watchlistContainer.innerHTML = `<div class="empty-state"><p>暂无自选股，搜索股票后点击☆添加</p></div>`;
+    return;
+  }
+
+  watchlistContainer.innerHTML = watchlist.map(s => stockToHTML(s, true)).join('');
+}
+
+// Auto refresh every 10 minutes
+setInterval(loadWatchlist, 10 * 60 * 1000);
+
+// Init
+loadWatchlist();
+</script>
+</body>
+</html>

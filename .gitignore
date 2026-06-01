@@ -143,5 +143,5 @@ cython_debug/
 node_modules/
 dist/
 
-# Stock API proxy server (standalone project)
-server/
+# Stock API proxy - keep in repo but node_modules excluded (handled by root pattern)
+
