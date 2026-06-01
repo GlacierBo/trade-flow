@@ -46,59 +46,35 @@ const chartOption = computed(() => {
   const buckets = store.buckets
   if (!buckets.length || !store.totalAmount) return null
 
-  // 每个品种拆分为「已用」和「未用」两个子项，ECharts 自动按面积排列
-  // 已用子项显示颜色和标签，未用子项透明无标签
-  const data = []
-  for (const b of buckets) {
+  const data = buckets.map((b) => {
     const fillRatio = store.bucketFillRatio(b.id)
     const overflow = store.bucketOverflow(b.id)
-    const used = b.usedAmount || 0
-    const limit = store.bucketLimit(b.id)
     const rgb = (b.color || 'rgba(59,130,246,0.3)').replace(/rgba?\(([^)]+).*/, '$1').split(',').slice(0, 3).join(',')
+    const alpha = overflow ? 0.2 : Math.max(0.04, 0.08 + fillRatio * 0.27)
 
-    if (overflow) {
-      // 超额：整体红色
-      data.push({
-        name: b.name,
-        value: b.percentage,
-        bucketId: b.id,
-        itemStyle: { color: 'rgba(239,68,68,0.2)', borderColor: 'rgba(239,68,68,0.5)', borderWidth: 2 },
-        label: {
-          formatter: `${b.name}\n${b.percentage}%\n⚠️超额\n¥${fmt(used)}`,
+    return {
+      name: b.name,
+      value: b.percentage,
+      bucketId: b.id,
+      itemStyle: {
+        color: overflow ? 'rgba(239,68,68,0.2)' : `rgba(${rgb},${alpha})`,
+        borderColor: overflow ? 'rgba(239,68,68,0.5)' : 'rgba(75,85,99,0.6)',
+        borderWidth: overflow ? 2 : 1,
+      },
+      label: {
+        formatter: () => {
+          const lines = [b.name, `${b.percentage}%`]
+          if (showAmounts.value) {
+            const used = b.usedAmount || 0
+            lines.push(used ? `¥${fmt(used)}` : '¥0')
+            if (used) lines.push(`─ ${(fillRatio * 100).toFixed(0)}%`)
+          }
+          if (overflow) lines.push('⚠️超额')
+          return lines.join('\n')
         },
-      })
-    } else {
-      const usedPct = used && limit ? used / limit : 0
-      // 标签文案（统一在较大的一块上显示）
-      const labelText = () => {
-        const lines = [b.name, `${b.percentage}%`]
-        if (showAmounts.value) lines.push(used ? `¥${fmt(used)} (${(fillRatio * 100).toFixed(0)}%)` : '¥0')
-        return lines.join('\n')
-      }
-      // 判断哪块更大，标签放在大块上
-      const showLabelOnUsed = usedPct >= 0.5
-      // 未用部分
-      if (usedPct < 1) {
-        data.push({
-          name: b.name,
-          value: b.percentage * (1 - usedPct),
-          bucketId: b.id,
-          itemStyle: { color: `rgba(${rgb},0.04)`, borderColor: 'rgba(75,85,99,0.3)', borderWidth: 1 },
-          label: showLabelOnUsed ? { show: false } : { formatter: labelText },
-        })
-      }
-      // 已用部分
-      if (usedPct > 0) {
-        data.push({
-          name: b.name,
-          value: b.percentage * usedPct,
-          bucketId: b.id,
-          itemStyle: { color: `rgba(${rgb},0.35)`, borderColor: 'rgba(75,85,99,0.6)', borderWidth: 1 },
-          label: showLabelOnUsed ? { formatter: labelText } : { show: false },
-        })
-      }
+      },
     }
-  }
+  })
 
   return {
     tooltip: {
