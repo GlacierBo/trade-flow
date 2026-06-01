@@ -21,6 +21,27 @@ function save(state) {
 
 let _id = Date.now()
 
+// 预定义一组深色背景可用的颜色
+const COLORS = [
+  'rgba(59,130,246,0.25)',   // 蓝
+  'rgba(239,68,68,0.25)',    // 红
+  'rgba(34,197,94,0.25)',    // 绿
+  'rgba(234,179,8,0.25)',    // 黄
+  'rgba(168,85,247,0.25)',   // 紫
+  'rgba(249,115,22,0.25)',   // 橙
+  'rgba(236,72,153,0.25)',   // 粉
+  'rgba(20,184,166,0.25)',   // 青
+  'rgba(239,68,68,0.18)',
+  'rgba(59,130,246,0.18)',
+  'rgba(34,197,94,0.18)',
+  'rgba(168,85,247,0.18)',
+  'rgba(249,115,22,0.18)',
+  'rgba(236,72,153,0.18)',
+  'rgba(20,184,166,0.18)',
+  'rgba(234,179,8,0.18)',
+]
+let _colorIdx = 0
+
 export const useAllocatorStore = defineStore('allocator', {
   state: () => ({
     totalAmount: 0,
@@ -113,6 +134,7 @@ export const useAllocatorStore = defineStore('allocator', {
         name,
         percentage: Number(percentage),
         positionIds: [],
+        color: COLORS[_colorIdx++ % COLORS.length],
       })
       this._save()
     },

@@ -326,10 +326,15 @@ watch(() => store.buckets.map(b => b.percentage + b.positionIds.length).join(','
         >
           <!-- 真实品种 -->
           <template v-if="!item._unallocated">
-            <!-- 填充层 -->
-            <div class="absolute inset-0 rounded-xl transition-all duration-500" :class="store.bucketOverflow(item.id) ? 'bg-red-500/15' : 'bg-gradient-to-br from-blue-500/8 to-blue-400/15'" />
-            <!-- 已分配填充 -->
-            <div v-if="!store.bucketOverflow(item.id)" class="absolute bottom-0 left-0 right-0 rounded-b-xl transition-all duration-500" :class="store.bucketTotal(item.id) ? 'bg-blue-500/12' : ''" :style="{ height: (store.bucketFillRatio(item.id) * 100) + '%' }" />
+            <!-- 背景色 -->
+            <div
+              class="absolute inset-0 rounded-xl transition-all duration-500"
+              :style="{ backgroundColor: store.buckets.find(b => b.id === item.id)?.color || 'rgba(59,130,246,0.15)' }"
+            />
+            <!-- 已分配填充加深 -->
+            <div v-if="store.bucketTotal(item.id) && !store.bucketOverflow(item.id)" class="absolute bottom-0 left-0 right-0 rounded-b-xl bg-black/15 transition-all duration-500" :style="{ height: (store.bucketFillRatio(item.id) * 100) + '%' }" />
+            <!-- 超额红色覆盖 -->
+            <div v-if="store.bucketOverflow(item.id)" class="absolute inset-0 rounded-xl bg-red-500/20" />
 
             <div class="relative z-10 flex flex-col items-center justify-center h-full p-2 text-center">
               <div class="text-sm font-black text-gray-100 truncate max-w-full leading-tight">{{ store.buckets.find(b => b.id === item.id)?.name }}</div>
