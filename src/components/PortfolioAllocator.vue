@@ -110,14 +110,15 @@ function worstRatio(row, rowSum, cw, ch, horizontal) {
 }
 
 function calcLayout() {
-  if (!gridRef.value || !store.buckets.length || !store.totalAmount) {
-    layout.value = []
-    return
-  }
-  const rect = gridRef.value.getBoundingClientRect()
-  const cw = rect.width - 32  // padding
-  const ch = rect.height - 32
-  if (cw <= 0 || ch <= 0) return
+  requestAnimationFrame(() => {
+    if (!gridRef.value || !store.buckets.length || !store.totalAmount) {
+      layout.value = []
+      return
+    }
+    const rect = gridRef.value.getBoundingClientRect()
+    const cw = Math.max(rect.width - 32, 100)
+    const ch = Math.max(rect.height - 32, 100)
+    if (cw <= 0 || ch <= 0) return
 
   const usedPct = store.usedPercentage
   const items = store.buckets.map((b) => ({
@@ -138,7 +139,8 @@ function calcLayout() {
   }
 
   squarify(items, 0, 0, cw, ch)
-  layout.value = items
+    layout.value = items
+  })
 }
 
 // ========== 拖拽 ==========
