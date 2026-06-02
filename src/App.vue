@@ -18,6 +18,8 @@ import SponsorView from './components/SponsorView.vue'
 import ChangePasswordForm from './components/ChangePasswordForm.vue'
 import StockSearch from './components/StockSearch.vue'
 import PortfolioAllocator from './components/PortfolioAllocator.vue'
+import PortfolioAllocator2 from './components/PortfolioAllocator2.vue'
+import ContractManagement from './components/ContractManagement.vue'
 
 const store = useStockStore()
 const route = useRoute()
@@ -89,6 +91,12 @@ onMounted(() => {
 
       <!-- 持仓分配页 -->
       <PortfolioAllocator v-if="route.name === 'allocator'" />
+      <PortfolioAllocator2 v-if="route.name === 'allocator2'" />
+
+      <!-- 合约管理页 -->
+      <div v-if="route.name === 'contracts'" class="py-4">
+        <ContractManagement />
+      </div>
 
       <!-- 持仓比例页 -->
       <PortfolioRatio v-if="route.name === 'portfolio'" />

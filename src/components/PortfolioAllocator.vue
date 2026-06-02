@@ -116,6 +116,7 @@ function updateChart() {
 
 // ========== 金额显隐 ==========
 const showAmounts = ref(true)
+const showPositions = ref(false)
 function toggleAmounts() {
   showAmounts.value = !showAmounts.value
   updateChart()
@@ -213,7 +214,10 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
         </template>
         <span class="text-xs text-gray-500 ml-2">已用 {{ store.usedPercentage.toFixed(1) }}%</span>
       </div>
-      <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95" @click="openBucketForm">+ 新增品种</button>
+      <div class="flex items-center gap-2">
+        <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95" @click="openBucketForm">+ 新增品种</button>
+        <button class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95" @click="showPositions = !showPositions">查看持仓</button>
+      </div>
     </div>
 
     <!-- ECharts Treemap -->
@@ -305,4 +309,59 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
       </div>
     </div>
   </div>
+
+  <!-- 持仓抽屉 -->
+  <Transition name="drawer">
+    <div v-if="showPositions" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div class="absolute right-0 top-0 h-full w-80 max-w-[90vw] bg-gray-800 border-l border-gray-700/50 shadow-2xl flex flex-col">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/50 flex-shrink-0">
+          <h3 class="text-base font-black text-gray-100">持仓明细</h3>
+          <button class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-700 transition-colors" @click="showPositions = false">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5 space-y-3">
+          <div v-for="b in store.buckets" :key="b.id" class="bg-gray-700/30 rounded-xl p-4 border border-gray-700/50">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: b.color.replace('0.35', '1').replace('0.25', '1') }" />
+              <span class="text-sm font-bold text-gray-200">{{ b.name }}</span>
+            </div>
+            <div class="space-y-1.5 text-xs">
+              <div class="flex justify-between"><span class="text-gray-500">比例</span><span class="text-gray-300 font-mono">{{ b.percentage }}%</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">额度</span><span class="text-gray-300 font-mono">¥{{ fmt(store.bucketLimit(b.id)) }}</span></div>
+              <div class="flex justify-between"><span class="text-gray-500">已用</span><span class="text-gray-300 font-mono">¥{{ fmt(b.usedAmount || 0) }}</span></div>
+              <div v-if="b.usedAmount" class="flex justify-between">
+                <span class="text-gray-500">使用率</span>
+                <span :class="store.bucketOverflow(b.id) ? 'text-red-400' : 'text-gray-300'" class="font-mono">{{ (store.bucketFillRatio(b.id) * 100).toFixed(1) }}%</span>
+              </div>
+            </div>
+            <div v-if="b.usedAmount" class="mt-3 h-1.5 rounded-full bg-gray-700/50 overflow-hidden">
+              <div class="h-full rounded-full transition-all" :class="store.bucketOverflow(b.id) ? 'bg-red-400' : 'bg-blue-500'" :style="{ width: Math.min(store.bucketFillRatio(b.id) * 100, 100) + '%' }" />
+            </div>
+          </div>
+          <div v-if="!store.buckets.length" class="text-center text-gray-500 text-sm py-12">暂无持仓数据</div>
+        </div>
+      </div>
+    </div>
+  </Transition>
 </template>
+
+<style scoped>
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: opacity 0.2s ease;
+}
+.drawer-enter-active > div:last-child,
+.drawer-leave-active > div:last-child {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.drawer-enter-from,
+.drawer-leave-to {
+  opacity: 0;
+}
+.drawer-enter-from > div:last-child,
+.drawer-leave-to > div:last-child {
+  transform: translateX(100%);
+}
+</style>
