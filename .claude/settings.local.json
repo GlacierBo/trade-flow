@@ -39,7 +39,10 @@
       "Bash(pkill -f \"app.main\")",
       "Bash(python *)",
       "Bash(taskkill //F //IM node.exe)",
-      "Bash(git checkout *)"
+      "Bash(git checkout *)",
+      "Bash(git stash *)",
+      "Bash(npm run *)",
+      "Bash(npm ls *)"
     ]
   }
 }

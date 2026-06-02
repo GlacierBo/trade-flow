@@ -2,13 +2,14 @@
 
 网格交易记录 & 持仓比例分析工具。
 
-追踪每笔网格交易的盈利，管理资产配置。前端 Vue 3 + Tailwind CSS，后端 Supabase（PostgreSQL），无需自建服务。
+追踪每笔网格交易的盈利，管理资产配置。前端 Vue 3 + Tailwind CSS，后端 Python FastAPI + MySQL。
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vue-3.x-4FC08D?logo=vue.js&logoColor=white" alt="Vue 3" />
   <img src="https://img.shields.io/badge/Vite-5.x-646CFF?logo=vite&logoColor=white" alt="Vite" />
   <img src="https://img.shields.io/badge/Pinia-2.x-DD0031?logo=pinia&logoColor=white" alt="Pinia" />
-  <img src="https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white" alt="Supabase" />
+  <img src="https://img.shields.io/badge/FastAPI-Python-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/MySQL-8.x-4479A1?logo=mysql&logoColor=white" alt="MySQL" />
   <img src="https://img.shields.io/badge/Tailwind-CSS-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
 </p>
 
@@ -32,30 +33,59 @@
 
 | Frontend | Backend | Build |
 |----------|---------|-------|
-| Vue 3 (Composition API) | Supabase (PostgreSQL) | Vite 5 |
-| Pinia 2 | 东方财富行情 API（通过本地代理服务） | Tailwind CSS 3 |
-| No router (SPA view switching) | DB Triggers for auto recalc | PostCSS |
+| Vue 3 (Composition API) | Python FastAPI | Vite 5 |
+| Pinia 2 | MySQL | Tailwind CSS 3 |
+| Vue Router 4 | 东方财富行情 API | PostCSS |
 
 ## Quick Start
 
-```bash
-# 1. 配置环境变量
-cp .env.example .env
-# 编辑 .env，填入你的 Supabase URL 和 Anon Key
+### 后端服务
 
-# 2. 安装依赖
+```bash
+# 1. 进入后端目录
+cd backend
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入 MySQL 连接信息
+
+# 3. 安装依赖
+pip install -r requirements.txt
+
+# 4. 初始化数据库
+# 执行 backend/schema.mysql.sql 建表
+
+# 5. (可选) 生成测试数据
+python seed_test_data.py
+
+# 6. 启动后端服务
+python -m app.main
+# 或
+uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
+```
+
+后端服务运行在 `http://localhost:3001`，API 文档访问 `http://localhost:3001/docs`。
+
+### 前端服务
+
+```bash
+# 1. 进入前端目录
+cd frontend
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env，按需配置
+
+# 3. 安装依赖
 npm install
 
-# 3. 初始化数据库
-# 在 Supabase Dashboard → SQL Editor 依次执行：
-#   sql/supabase-schema.sql
-#   sql/supabase-schema-tags.sql
-
-# 4. 启动
+# 4. 启动开发服务器
 npm run dev
 ```
 
 访问 `http://localhost:5173`。
+
+> **注意：** 前端开发服务器会自动将 `/api` 请求代理到后端 `http://localhost:3001`，请确保后端服务已启动。
 
 默认账号：
 | 用户名 | 密码 | 角色 |
@@ -66,54 +96,93 @@ npm run dev
 ## Directory Structure
 
 ```
-src/
-├── App.vue                  # Root: auth guard + tab navigation
-├── main.js                  # Entry: mount app, init Pinia
-├── style.css                # Tailwind directives + custom animations
-├── api/stock.js             # Supabase client + all API functions
-├── api/stock-quote.js       # 东方财富行情 API（搜索、实时报价）
-├── stores/stock.js          # Pinia store (state, actions, modals)
-├── stores/stocks.js         # Pinia store（股票搜索状态）
-├── stores/watchlist.js      # Pinia store（自选股、localStorage 持久化、定时刷新）
-└── components/
-    ├── LoginPage.vue        # Login / Register (username + auto-generated password)
-    ├── TradeList.vue        # Trade history (buys with sell children)
-    ├── TradeModal.vue       # Add/edit trade dialog
-    ├── SellModal.vue        # Sell against a buy order
-    ├── PositionList.vue     # Position overview (active + closed)
-    ├── QuickTrade.vue       # Quick-trade tag list
-    ├── ConfirmModal.vue     # Confirmation dialog
-    ├── Toast.vue            # Toast notifications
-    ├── PortfolioRatio.vue   # Portfolio ratio calculator page
-    ├── PortfolioModal.vue   # Add portfolio item dialog
-    ├── UserManagement.vue   # Admin: paginated user list, reset passwords
-    ├── ChangePasswordForm.vue # Change password modal
-    ├── StockSearch.vue      # 股票搜索主页面（搜索框 + 自选面板 + 结果网格）
-    ├── SearchBar.vue        # 搜索输入框（防抖自动搜索）
-    ├── StockGrid.vue        # 搜索结果网格布局
-    ├── StockCard.vue        # 股票卡片（名称、代码、现价、涨跌幅）
-    ├── StockDetailModal.vue # 股票详情弹窗
-    └── WatchlistPanel.vue   # 自选股面板（涨跌幅、删除、定时刷新）
-sql/
-├── supabase-schema.sql      # Core schema: trades, positions, counters, triggers
-└── supabase-schema-tags.sql # Tags, portfolio_items, app_users + auth RPC functions
+frontend/
+├── .env.example             # 环境变量模板
+├── index.html               # 入口 HTML
+├── package.json             # 前端依赖 & 脚本
+├── vite.config.js           # Vite 配置（含 /api 代理）
+├── tailwind.config.js       # Tailwind CSS 配置
+├── src/
+│   ├── App.vue              # Root: auth guard + tab navigation
+│   ├── main.js              # Entry: mount app, init Pinia
+│   ├── style.css            # Tailwind directives + custom animations
+│   ├── api/
+│   │   ├── stock.js         # 后端 API 对接（交易、持仓、用户等）
+│   │   └── stock-quote.js   # 股票行情 API（搜索、实时报价）
+│   ├── stores/
+│   │   ├── stock.js         # Pinia store (state, actions, modals)
+│   │   ├── stocks.js        # Pinia store（股票搜索状态）
+│   │   ├── watchlist.js     # Pinia store（自选股、定时刷新）
+│   │   ├── contract.js      # Pinia store（合约管理）
+│   │   ├── allocator.js     # Pinia store（持仓比例分析）
+│   │   └── allocator2.js    # Pinia store（持仓比例分析 v2）
+│   └── components/
+│       ├── LoginPage.vue    # 登录 / 注册
+│       ├── Sidebar.vue      # 侧边栏导航
+│       ├── TradeList.vue    # 交易记录列表
+│       ├── TradeModal.vue   # 添加/编辑交易弹窗
+│       ├── SellModal.vue    # 卖出弹窗
+│       ├── PositionList.vue # 持仓概览
+│       ├── QuickTrade.vue   # 快捷交易标签
+│       ├── PortfolioRatio.vue   # 持仓比例分析页
+│       ├── PortfolioModal.vue   # 添加持仓比例项弹窗
+│       ├── PortfolioAllocator.vue  # 持仓比例可视化
+│       ├── PortfolioAllocator2.vue # 持仓比例可视化 v2
+│       ├── ContractManagement.vue # 合约管理
+│       ├── UserManagement.vue     # 管理员：用户管理
+│       ├── ChangePasswordForm.vue # 修改密码
+│       ├── StockSearch.vue  # 股票搜索主页面
+│       ├── SearchBar.vue    # 搜索输入框（防抖）
+│       ├── StockGrid.vue    # 搜索结果网格
+│       ├── StockCard.vue    # 股票卡片
+│       ├── StockDetailModal.vue # 股票详情弹窗
+│       ├── WatchlistPanel.vue   # 自选股面板
+│       ├── SponsorView.vue  # 赞助页面
+│       └── common/
+│           ├── ConfirmModal.vue # 确认弹窗
+│           └── Toast.vue    # Toast 通知
+backend/
+└── ...                      # 后端服务（见 backend/README.md）
 ```
 
 ## Database
 
-PostgreSQL tables managed via Supabase. Key design:
+MySQL 数据库，建表语句见 `backend/schema.mysql.sql`。核心表设计：
 
-- **`stock_trades`** — All buy/sell records linked by `buy_order_no`, isolated by `user_id`
-- **`stock_positions`** — Auto-calculated view per user per contract, recalculated by DB trigger on every trade change
-- **`stock_trade_tags`** — Quick-trade presets, auto-created on buy, isolated by `user_id`
-- **`portfolio_items`** — Portfolio ratio data source (name, contract, tag, price), isolated by `user_id`. Same contract auto-accumulates price instead of duplicate rows.
-- **`app_users`** — User accounts with MD5+salt password hashing, role-based access (user/admin)
+- **`fnos_trades`** — 交易记录，通过 `buy_order_no` 关联买卖，`user_id` 隔离用户数据
+- **`fnos_positions`** — 持仓表，按用户+合约唯一，后端服务自动重算
+- **`fnos_trade_tags`** — 快捷交易标签，买入时自动创建，按用户隔离
+- **`fnos_portfolio_items`** — 持仓比例数据源（名称、合约、标签、金额），按用户隔离
+- **`fnos_stocks`** — 股票行情历史数据
+- **`fnos_watchlist`** — 自选股列表
 
-All business tables use `user_id` for multi-tenant data isolation — each user only sees their own data.
+所有业务表通过 `user_id` 实现多租户数据隔离，每个用户只能访问自己的数据。
 
 ## Deployment
 
+详细部署文档请参考 [DEPLOY.md](./DEPLOY.md)
+
+### 快速部署
+
+**前端打包：**
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+**后端启动：**
+
+```bash
+cd backend
+pip install -r requirements.txt
+python -m app.main
+```
+
+### GitHub Pages 自动部署
+
 Push to GitHub. GitHub Actions builds and deploys to GitHub Pages automatically.
 
-1. 在仓库 Settings → Actions secrets 添加 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY`
+1. 在仓库 Settings → Actions secrets 添加前端所需的环境变量
 2. 推送 main 分支即可
