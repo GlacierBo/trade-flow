@@ -7,7 +7,6 @@ const routes = [
   { path: '/', redirect: '/home' },
   { path: '/home', name: 'home', component: Placeholder },
   { path: '/stocks', name: 'stocks', component: Placeholder },
-  { path: '/allocator', name: 'allocator', component: Placeholder },
   { path: '/allocator2', name: 'allocator2', component: Placeholder },
   { path: '/contracts', name: 'contracts', component: Placeholder },
   { path: '/portfolio', name: 'portfolio', component: Placeholder },

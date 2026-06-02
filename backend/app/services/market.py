@@ -3,11 +3,19 @@
 from sqlalchemy.orm import Session
 
 from app.models import Stock, Watchlist
-from clients import auto
+from clients import auto, sina, eastmoney, tencent
 
 
-async def search_stocks(keyword: str) -> list[dict]:
-    return await auto.search_stocks(keyword)
+async def search_stocks(keyword: str, source: str = "auto") -> list[dict]:
+    """搜索股票，支持指定数据源"""
+    if source == "sina":
+        return await sina.search_stocks(keyword)
+    elif source == "tencent":
+        return await tencent.search_stocks(keyword)
+    elif source == "eastmoney":
+        return await eastmoney.search_stocks(keyword)
+    else:
+        return await auto.search_stocks(keyword)
 
 
 async def get_stock(code: str, db: Session) -> dict | None:

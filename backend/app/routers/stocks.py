@@ -9,10 +9,13 @@ router = APIRouter(prefix="/api/stocks", tags=["stocks"])
 
 
 @router.get("/search")
-async def search_stocks(q: str = Query("")):
+async def search_stocks(
+    q: str = Query(""),
+    source: str = Query("auto", description="数据源: auto/sina/eastmoney"),
+):
     if not q:
         return ApiResponse(success=False, error="Missing q")
-    stocks = await market.search_stocks(q)
+    stocks = await market.search_stocks(q, source)
     return ApiResponse(data=stocks)
 
 

@@ -16,7 +16,6 @@ import UserManagement from './components/admin/UserManagement.vue'
 import SponsorView from './components/sponsor/SponsorView.vue'
 import ChangePasswordForm from './components/auth/ChangePasswordForm.vue'
 import StockSearch from './components/stocks/StockSearch.vue'
-import PortfolioAllocator from './components/portfolio/PortfolioAllocator.vue'
 import PortfolioAllocator2 from './components/portfolio/PortfolioAllocator2.vue'
 import ContractManagement from './components/contract/ContractManagement.vue'
 
@@ -105,8 +104,7 @@ onMounted(() => {
       <!-- 股票查询页 -->
       <StockSearch v-if="route.name === 'stocks'" />
 
-      <!-- 持仓分配页 -->
-      <PortfolioAllocator v-if="route.name === 'allocator'" />
+      <!-- 我的持仓页 -->
       <PortfolioAllocator2 v-if="route.name === 'allocator2'" />
 
       <!-- 合约管理页 -->

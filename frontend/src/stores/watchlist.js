@@ -30,6 +30,25 @@ export const useWatchlistStore = defineStore('watchlist', {
       this.loading = false
     },
 
+    async add(code, name) {
+      this.loading = true
+      try {
+        const res = await fetch(API_BASE, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, name }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error || '添加失败')
+        // 重新获取列表以获取最新数据
+        await this.fetchWatchlist()
+      } catch (err) {
+        this.error = err.message || '添加失败'
+      } finally {
+        this.loading = false
+      }
+    },
+
     async remove(code) {
       this.loading = true
       try {

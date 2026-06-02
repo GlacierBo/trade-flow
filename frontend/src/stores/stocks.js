@@ -8,16 +8,21 @@ export const useStocksStore = defineStore('stocks', {
     loading: false,
     error: '',
     lastKeyword: '',
+    source: 'auto', // auto | sina | eastmoney
   }),
 
   actions: {
+    setSource(source) {
+      this.source = source
+    },
+
     async search(keyword) {
       if (!keyword.trim()) return
       this.loading = true
       this.error = ''
       this.lastKeyword = keyword
       try {
-        this.results = await searchStocks(keyword)
+        this.results = await searchStocks(keyword, this.source)
       } catch (err) {
         this.error = err.message || '搜索失败'
         this.results = []

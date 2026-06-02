@@ -20,9 +20,9 @@ async function request(url) {
 }
 
 // 搜索股票
-export async function searchStocks(keyword) {
+export async function searchStocks(keyword, source = 'auto') {
   if (!keyword.trim()) return []
-  const data = await request(`${BASE}/stocks/search?q=${encodeURIComponent(keyword)}`)
+  const data = await request(`${BASE}/stocks/search?q=${encodeURIComponent(keyword)}&source=${source}`)
   return data || []
 }
 

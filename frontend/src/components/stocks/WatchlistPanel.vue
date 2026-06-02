@@ -56,23 +56,7 @@ async function handleRemove(code) {
 </script>
 
 <template>
-  <div class="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden">
-    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-700/50">
-      <div class="flex items-center gap-2">
-        <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
-        <h3 class="text-sm font-black text-gray-200">我的自选</h3>
-        <span class="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full">
-          {{ store.items.length }}
-        </span>
-      </div>
-      <div class="text-xs text-gray-500">
-        <span v-if="store.loading" class="text-blue-400">刷新中...</span>
-        <span v-else-if="lastUpdatedText">上次更新 {{ lastUpdatedText }}</span>
-      </div>
-    </div>
-
+  <div class="bg-gray-800/50 rounded-b-2xl border border-t-0 border-gray-700/50 overflow-hidden">
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4">
       <div
         v-for="item in store.items"

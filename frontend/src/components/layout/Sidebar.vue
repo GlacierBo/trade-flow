@@ -19,8 +19,7 @@ onUnmounted(() => document.removeEventListener('click', onDocClick))
 const menuItems = [
   { key: 'home', label: '网格交易', icon: 'home' },
   { key: 'stocks', label: '我的自选', icon: 'star' },
-  { key: 'allocator', label: '持仓分配', icon: 'grid' },
-  { key: 'allocator2', label: '分配方案2', icon: 'grid' },
+  { key: 'allocator2', label: '我的持仓', icon: 'grid' },
   { key: 'contracts', label: '合约管理', icon: 'file' },
   { key: 'portfolio', label: '持仓比例', icon: 'chart' },
   { key: 'users', label: '用户管理', icon: 'users', adminOnly: true },
