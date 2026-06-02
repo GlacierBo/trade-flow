@@ -30,7 +30,16 @@
       "Bash(mv lib/eastmoney.js lib/market.js api-client/)",
       "Bash(rm -rf lib)",
       "Bash(git revert *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(pip install *)",
+      "Bash(python -c ' *)",
+      "Bash(timeout 5 python -c ' *)",
+      "Bash(python -m app.main)",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(pkill -f \"app.main\")",
+      "Bash(python *)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(git checkout *)"
     ]
   }
 }

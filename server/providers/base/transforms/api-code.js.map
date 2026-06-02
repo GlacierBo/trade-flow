@@ -1,1 +1,0 @@
-{"version":3,"file":"api-code.js","sourceRoot":"","sources":["../../../../src/providers/base/transforms/api-code.ts"],"names":[],"mappings":";;AAAA,sDAMiC;AACjC,0DAAyE;AAEzE,MAAM,oBAAoB,GAAG,IAAA,2CAA6B,EAAC;IACzD,YAAY,EAAE,yBAAc;IAC5B,YAAY,EAAE;QACZ,EAAE,EAAE,sCAA2B;QAC/B,EAAE,EAAE,sCAA2B;QAC/B,EAAE,EAAE,sCAA2B;QAC/B,EAAE,EAAE,sCAA2B;KAChC;CACF,CAAC,CAAC;AAEH,kBAAe,oBAAoB,CAAC"}
