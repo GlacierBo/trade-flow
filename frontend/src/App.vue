@@ -1,44 +1,46 @@
 <script setup>
-import { onMounted, watch } from 'vue'
+import { onMounted, watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useStockStore } from './stores/stock'
-import LoginPage from './components/LoginPage.vue'
-import Sidebar from './components/Sidebar.vue'
-import QuickTrade from './components/QuickTrade.vue'
-import TradeList from './components/TradeList.vue'
-import PositionList from './components/PositionList.vue'
-import TradeModal from './components/TradeModal.vue'
-import SellModal from './components/SellModal.vue'
+import LoginPage from './components/auth/LoginPage.vue'
+import Sidebar from './components/layout/Sidebar.vue'
+import TradeList from './components/trade/TradeList.vue'
+import PositionList from './components/trade/PositionList.vue'
+import TradeModal from './components/trade/TradeModal.vue'
+import SellModal from './components/trade/SellModal.vue'
 import ConfirmModal from './components/common/ConfirmModal.vue'
 import Toast from './components/common/Toast.vue'
-import PortfolioRatio from './components/PortfolioRatio.vue'
-import PortfolioModal from './components/PortfolioModal.vue'
-import UserManagement from './components/UserManagement.vue'
-import SponsorView from './components/SponsorView.vue'
-import ChangePasswordForm from './components/ChangePasswordForm.vue'
-import StockSearch from './components/StockSearch.vue'
-import PortfolioAllocator from './components/PortfolioAllocator.vue'
-import PortfolioAllocator2 from './components/PortfolioAllocator2.vue'
-import ContractManagement from './components/ContractManagement.vue'
+import PortfolioRatio from './components/portfolio/PortfolioRatio.vue'
+import PortfolioModal from './components/portfolio/PortfolioModal.vue'
+import UserManagement from './components/admin/UserManagement.vue'
+import SponsorView from './components/sponsor/SponsorView.vue'
+import ChangePasswordForm from './components/auth/ChangePasswordForm.vue'
+import StockSearch from './components/stocks/StockSearch.vue'
+import PortfolioAllocator from './components/portfolio/PortfolioAllocator.vue'
+import PortfolioAllocator2 from './components/portfolio/PortfolioAllocator2.vue'
+import ContractManagement from './components/contract/ContractManagement.vue'
 
 const store = useStockStore()
 const route = useRoute()
 const router = useRouter()
 
-// 路由变化同步到 store，用来高亮侧边栏
+// 懒加载标记：记录各页面数据是否已加载
+const loaded = ref({ home: false })
+
+// 路由变化同步到 store，用来高亮侧边栏；并按页面懒加载数据
 watch(() => route.name, (name) => {
-  if (name && typeof name === 'string') store.setView(name)
-})
+  if (name && typeof name === 'string') {
+    store.setView(name)
+    // 首次访问 home 时加载交易、持仓、标签数据
+    if (name === 'home' && !loaded.value.home && store.isAuthenticated) {
+      loaded.value.home = true
+      store.loadData()
+    }
+  }
+}, { immediate: true })
 
 onMounted(() => {
   store.checkAuth()
-  if (store.isAuthenticated) {
-    store.loadData()
-    // 首次加载，URL 为空时跳到 home
-    if (route.name === 'home' || !route.name) {
-      store.setView('home')
-    }
-  }
 })
 </script>
 
@@ -53,33 +55,47 @@ onMounted(() => {
     <!-- Content Area -->
     <main class="flex-1 p-6 transition-all duration-300" :class="store.sidebarCollapsed ? 'ml-16' : 'ml-60'">
       <!-- 网格交易页 -->
-      <div v-if="route.name === 'home'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div class="lg:col-span-2">
-          <QuickTrade />
-        </div>
-        <div class="lg:col-span-6">
-          <div class="bg-gray-800/50 rounded-2xl p-5 border border-gray-700/50">
-            <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-              <h2 class="text-lg font-black text-blue-400">交易明细<button
+      <div v-if="route.name === 'home'" class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- 左侧：交易明细 -->
+        <div class="lg:col-span-7">
+          <div class="bg-gray-800/60 rounded-2xl border border-gray-700/40 shadow-lg shadow-black/20">
+            <!-- 头部 -->
+            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/40">
+              <div class="flex items-center gap-3">
+                <h2 class="text-base font-bold text-gray-100">交易明细</h2>
+                <button
                   @click="store.openTradeModal()"
-                  class="ml-1.5 inline-flex items-center justify-center w-5 h-5 rounded-full bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white font-black text-sm leading-none shadow-lg shadow-blue-500/30 transition-all active:scale-95"
-                >+</button></h2>
-                <div class="relative">
-                  <input
-                    v-model="store.searchQuery"
-                    type="text"
-                    placeholder="搜索合约或单号..."
-                    class="bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500 w-48 text-gray-100 placeholder-gray-500"
-                  >
-                </div>
+                  class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-white text-xs font-bold rounded-lg transition-all active:scale-95 shadow-md shadow-blue-500/25"
+                >
+                  <span class="text-sm leading-none">+</span>
+                  <span>新增</span>
+                </button>
+              </div>
+              <div class="relative">
+                <input
+                  v-model="store.searchQuery"
+                  type="text"
+                  placeholder="搜索合约或单号..."
+                  class="w-48 bg-gray-700/40 border border-gray-600/50 rounded-lg px-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none focus:border-blue-500/50 focus:bg-gray-700/60 transition-all"
+                >
+              </div>
             </div>
-            <TradeList />
+            <!-- 列表内容 -->
+            <div class="p-4">
+              <TradeList />
+            </div>
           </div>
         </div>
-        <div class="lg:col-span-4">
-          <div class="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden sticky top-6">
+
+        <!-- 右侧：持仓概览 -->
+        <div class="lg:col-span-5">
+          <div class="bg-gray-800/60 rounded-2xl border border-gray-700/40 shadow-lg shadow-black/20 sticky top-6">
+            <!-- 头部 -->
+            <div class="px-5 py-4 border-b border-gray-700/40">
+              <h2 class="text-base font-bold text-gray-100">持仓概览</h2>
+            </div>
+            <!-- 列表内容 -->
             <div class="p-4">
-              <h2 class="text-lg font-black text-blue-400 mb-4">持仓概览</h2>
               <PositionList />
             </div>
           </div>

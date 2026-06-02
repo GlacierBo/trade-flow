@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useAllocatorStore } from '../stores/allocator'
+import { useAllocatorStore } from '../../stores/allocator'
 import * as echarts from 'echarts'
 
 const store = useAllocatorStore()

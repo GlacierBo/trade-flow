@@ -53,7 +53,7 @@ cp .env.example .env
 pip install -r requirements.txt
 
 # 4. 初始化数据库
-# 执行 backend/schema.mysql.sql 建表
+# 执行 backend/sql/schema.sql 建表
 
 # 5. (可选) 生成测试数据
 python seed_test_data.py
@@ -117,37 +117,45 @@ frontend/
 │   │   ├── allocator.js     # Pinia store（持仓比例分析）
 │   │   └── allocator2.js    # Pinia store（持仓比例分析 v2）
 │   └── components/
-│       ├── LoginPage.vue    # 登录 / 注册
-│       ├── Sidebar.vue      # 侧边栏导航
-│       ├── TradeList.vue    # 交易记录列表
-│       ├── TradeModal.vue   # 添加/编辑交易弹窗
-│       ├── SellModal.vue    # 卖出弹窗
-│       ├── PositionList.vue # 持仓概览
-│       ├── QuickTrade.vue   # 快捷交易标签
-│       ├── PortfolioRatio.vue   # 持仓比例分析页
-│       ├── PortfolioModal.vue   # 添加持仓比例项弹窗
-│       ├── PortfolioAllocator.vue  # 持仓比例可视化
-│       ├── PortfolioAllocator2.vue # 持仓比例可视化 v2
-│       ├── ContractManagement.vue # 合约管理
-│       ├── UserManagement.vue     # 管理员：用户管理
-│       ├── ChangePasswordForm.vue # 修改密码
-│       ├── StockSearch.vue  # 股票搜索主页面
-│       ├── SearchBar.vue    # 搜索输入框（防抖）
-│       ├── StockGrid.vue    # 搜索结果网格
-│       ├── StockCard.vue    # 股票卡片
-│       ├── StockDetailModal.vue # 股票详情弹窗
-│       ├── WatchlistPanel.vue   # 自选股面板
-│       ├── SponsorView.vue  # 赞助页面
-│       └── common/
-│           ├── ConfirmModal.vue # 确认弹窗
-│           └── Toast.vue    # Toast 通知
+│       ├── common/               # 全局公用组件
+│       │   ├── ConfirmModal.vue  # 确认弹窗
+│       │   └── Toast.vue        # Toast 通知
+│       ├── layout/               # 布局组件
+│       │   └── Sidebar.vue      # 侧边栏导航
+│       ├── auth/                 # 认证相关
+│       │   ├── LoginPage.vue    # 登录 / 注册
+│       │   └── ChangePasswordForm.vue # 修改密码
+│       ├── trade/                # 网格交易页
+│       │   ├── TradeList.vue    # 交易记录列表
+│       │   ├── TradeModal.vue   # 添加/编辑交易弹窗
+│       │   ├── SellModal.vue    # 卖出弹窗
+│       │   ├── PositionList.vue # 持仓概览
+│       │   └── QuickTrade.vue   # 快捷交易标签
+│       ├── stocks/               # 我的自选页
+│       │   ├── StockSearch.vue  # 搜索主页面
+│       │   ├── SearchBar.vue    # 搜索输入框（防抖）
+│       │   ├── StockGrid.vue    # 搜索结果网格
+│       │   ├── StockCard.vue    # 股票卡片
+│       │   ├── StockDetailModal.vue # 股票详情弹窗
+│       │   └── WatchlistPanel.vue   # 自选股面板
+│       ├── portfolio/            # 持仓比例页
+│       │   ├── PortfolioRatio.vue   # 持仓比例分析页
+│       │   ├── PortfolioModal.vue   # 添加持仓比例项弹窗
+│       │   ├── PortfolioAllocator.vue  # 持仓分配可视化
+│       │   └── PortfolioAllocator2.vue # 持仓分配可视化 v2
+│       ├── contract/             # 合约管理页
+│       │   └── ContractManagement.vue
+│       ├── admin/                # 用户管理页
+│       │   └── UserManagement.vue
+│       └── sponsor/              # 赞助页
+│           └── SponsorView.vue
 backend/
 └── ...                      # 后端服务（见 backend/README.md）
 ```
 
 ## Database
 
-MySQL 数据库，建表语句见 `backend/schema.mysql.sql`。核心表设计：
+MySQL 数据库，建表语句见 `backend/sql/schema.sql`。核心表设计：
 
 - **`fnos_trades`** — 交易记录，通过 `buy_order_no` 关联买卖，`user_id` 隔离用户数据
 - **`fnos_positions`** — 持仓表，按用户+合约唯一，后端服务自动重算

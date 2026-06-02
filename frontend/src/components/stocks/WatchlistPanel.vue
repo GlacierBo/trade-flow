@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useWatchlistStore } from '../stores/watchlist'
+import { useWatchlistStore } from '../../stores/watchlist'
 
 const store = useWatchlistStore()
 const removing = ref(null) // 当前正在删除的 code

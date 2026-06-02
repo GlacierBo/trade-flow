@@ -1,35 +1,18 @@
-import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.config import PORT
-from app.database import Base, SessionLocal, engine
+from app.database import Base, engine
+from app.middleware.exception_handler import global_exception_handler
 from app.routers import stocks, watchlist, trades, positions, portfolio, trade_tags, auth, contracts
+from app.scheduler.manager import start_scheduler, stop_scheduler
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-scheduler = AsyncIOScheduler()
-
-
-async def refresh_watchlist_task():
-    """定时刷新所有自选行情"""
-    try:
-        db = SessionLocal()
-        try:
-            from app.services.watchlist import refresh_watchlist as ref
-
-            await ref(db)
-            logger.info("[scheduler] 自选行情已刷新")
-        finally:
-            db.close()
-    except Exception as e:
-        logger.error("[scheduler] 刷新失败: %s", e)
 
 
 @asynccontextmanager
@@ -40,21 +23,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning("数据库连接失败，请检查 MySQL 是否已启动: %s", e)
 
-    # 启动时立即刷新一次
-    await refresh_watchlist_task()
-
-    # 每 10 分钟定时刷新
-    scheduler.add_job(refresh_watchlist_task, "interval", minutes=10)
-    scheduler.start()
-    logger.info("[scheduler] 自选行情每 10 分钟自动刷新")
+    # 启动定时任务
+    await start_scheduler()
 
     yield
 
-    scheduler.shutdown(wait=False)
+    stop_scheduler()
 
 
 app = FastAPI(title="TradeFlow Server", version="1.0.0", lifespan=lifespan)
 
+# 全局异常处理
+app.add_exception_handler(Exception, global_exception_handler)
+
+# 注册路由
 app.include_router(stocks.router)
 app.include_router(watchlist.router)
 app.include_router(trades.router)

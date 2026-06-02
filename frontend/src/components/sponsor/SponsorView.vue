@@ -1,6 +1,6 @@
 <script setup>
-import wxQr from '../pay/wx.png'
-import zfbQr from '../pay/zfb.png'
+import wxQr from '../../pay/wx.png'
+import zfbQr from '../../pay/zfb.png'
 </script>
 
 <template>

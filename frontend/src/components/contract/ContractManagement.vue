@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useContractStore } from '../stores/contract'
-import { useStockStore } from '../stores/stock'
+import { useContractStore } from '../../stores/contract'
+import { useStockStore } from '../../stores/stock'
 
 const store = useContractStore()
 const stockStore = useStockStore()

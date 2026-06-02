@@ -1,18 +1,21 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useAllocator2Store } from '../stores/allocator2'
-import { useContractStore } from '../stores/contract'
+import { useAllocator2Store } from '../../stores/allocator2'
+import { useContractStore } from '../../stores/contract'
+import { useStockStore } from '../../stores/stock'
+import Dropdown from '../common/Dropdown.vue'
 import * as echarts from 'echarts'
 
 const store = useAllocator2Store()
 const contractStore = useContractStore()
+const stockStore = useStockStore()
 const chartRef = ref(null)
 let chart = null
 let ro = null
 
 onMounted(() => {
   store.init()
-  contractStore.init()
+  contractStore.fetchContracts(stockStore.userId)
   tryInit()
   setTimeout(tryInit, 300)
   setTimeout(tryInit, 1000)
@@ -46,6 +49,14 @@ const varietyGroups = computed(() => {
     map[p.variety].totalAmount += (p.amount || 0)
   })
   return Object.values(map)
+})
+
+// 合约下拉选项
+const contractOptions = computed(() => {
+  return contractStore.contracts.map(c => ({
+    value: c.code,
+    label: `${c.code} - ${c.name}`
+  }))
 })
 
 function tryInit() {
@@ -174,9 +185,9 @@ function openContractForm() {
   showContractForm.value = true
 }
 
-function submitContract() {
+async function submitContract() {
   if (!contractCodeInput.value.trim() || !contractNameInput.value.trim()) return
-  contractStore.addContract(contractCodeInput.value.trim(), contractNameInput.value.trim())
+  await contractStore.addContract(contractCodeInput.value.trim(), contractNameInput.value.trim(), stockStore.userId)
   formContractCode.value = contractCodeInput.value.trim()
   showContractForm.value = false
 }
@@ -286,10 +297,13 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
         <div>
           <label class="text-xs text-gray-400 font-bold mb-1.5 block">合约</label>
           <div class="flex gap-2">
-            <select v-model="formContractCode" class="flex-1 bg-gray-700/50 border border-gray-600 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-blue-500 text-gray-100">
-              <option value="" disabled>选择合约</option>
-              <option v-for="c in contractStore.contracts" :key="c.code" :value="c.code">{{ c.code }} - {{ c.name }}</option>
-            </select>
+            <div class="flex-1">
+              <Dropdown
+                v-model="formContractCode"
+                :options="contractOptions"
+                placeholder="选择合约"
+              />
+            </div>
             <button class="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-700/50 border border-gray-600 text-gray-400 hover:text-blue-400 hover:border-blue-500 transition-all flex-shrink-0" title="新增合约" @click="openContractForm">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             </button>

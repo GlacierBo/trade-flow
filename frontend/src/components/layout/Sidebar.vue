@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useStockStore } from '../stores/stock'
+import { useStockStore } from '../../stores/stock'
 
 const store = useStockStore()
 const route = useRoute()

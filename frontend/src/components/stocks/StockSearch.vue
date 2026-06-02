@@ -1,6 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
-import { useWatchlistStore } from '../stores/watchlist'
+import { useWatchlistStore } from '../../stores/watchlist'
 import WatchlistPanel from './WatchlistPanel.vue'
 
 const store = useWatchlistStore()

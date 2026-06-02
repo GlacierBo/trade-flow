@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useStocksStore } from '../stores/stocks'
+import { useStocksStore } from '../../stores/stocks'
 
 const store = useStocksStore()
 const keyword = ref('')

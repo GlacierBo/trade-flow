@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useStockStore } from '../stores/stock'
+import { useStockStore } from '../../stores/stock'
 
 const store = useStockStore()
 

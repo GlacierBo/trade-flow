@@ -103,7 +103,7 @@ mysql -u root -p
 CREATE DATABASE trade_flow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 # 执行建表语句
-mysql -u root -p trade_flow < schema.mysql.sql
+mysql -u root -p trade_flow < sql/schema.sql
 ```
 
 ### 4. 启动服务
@@ -245,7 +245,7 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./backend/schema.mysql.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
 
   backend:
@@ -420,7 +420,7 @@ netstat -ano | findstr :3001
 执行建表语句：
 
 ```bash
-mysql -u root -p trade_flow < backend/schema.mysql.sql
+mysql -u root -p trade_flow < backend/sql/schema.sql
 ```
 
 ---
