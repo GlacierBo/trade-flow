@@ -26,12 +26,12 @@ FROM python:3.11-slim
 
 WORKDIR /app/backend
 
-# 1. 替换 Debian 国内阿里源，彻底解决 apt update 慢问题
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
-    && sed -i 's/security.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list
-
-# 2. 安装 curl + 即时清理缓存（单层执行，减少镜像层数&体积）
-RUN apt-get update \
+# 重写 sources.list 为阿里云 Debian 源
+RUN echo "deb http://mirrors.aliyun.com/debian/ trixie main non-free contrib" > /etc/apt/sources.list \
+    && echo "deb http://mirrors.aliyun.com/debian/ trixie-updates main non-free contrib" >> /etc/apt/sources.list \
+    && echo "deb http://mirrors.aliyun.com/debian-security/ trixie-security main non-free contrib" >> /etc/apt/sources.list \
+    # 安装 curl 并清理缓存
+    && apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
