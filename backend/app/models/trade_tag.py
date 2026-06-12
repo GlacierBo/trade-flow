@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, TIMESTAMP, text
+from sqlalchemy import Column, Integer, String, DECIMAL, TIMESTAMP, text, func
 
 from app.database import Base
 
@@ -12,4 +12,4 @@ class TradeTag(Base):
     name = Column(String(100), nullable=False)
     latest_price = Column(DECIMAL(18, 2), default=0)
     user_id = Column(Integer, nullable=False, default=1)
-    updated_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
+    updated_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"), onupdate=func.now())

@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  # --------------------------------------------------------------------------
+  # TradeFlow 应用服务（默认使用 SQLite，轻量部署）
+  # --------------------------------------------------------------------------
+  app:
+    build: .
+    container_name: tradeflow
+    ports:
+      - "3001:3001"
+    volumes:
+      # SQLite 数据库文件持久化（数据库文件将保存在宿主机的 ./data/ 目录下）
+      - ./data:/app/data
+    environment:
+      # ---- 数据库配置 ----
+      # SQLite（默认，轻量，无需外部数据库）
+      - DATABASE_TYPE=sqlite
+      # SQLite 文件路径（可选，默认 /app/data/trade_flow.db）
+      # - SQLITE_PATH=/app/data/trade_flow.db
+
+      # ---- 应用配置 ----
+      - PORT=3001
+
+      # ---- MySQL 配置（取消注释以切换到 MySQL）----
+      # - DATABASE_TYPE=mysql
+      # - MYSQL_HOST=mysql
+      # - MYSQL_PORT=3306
+      # - MYSQL_USER=tradeflow
+      # - MYSQL_PASSWORD=change_me
+      # - MYSQL_DATABASE=trade_flow
+
+      # ---- 安全配置（生产环境请务必修改）----
+      # - SECRET_KEY=your-production-secret-key
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # --------------------------------------------------------------------------
+  # MySQL（可选，生产环境使用）
+  # 切换到 MySQL 时：
+  #   1. 取消下方 mysql 服务的注释
+  #   2. 取消 app 环境变量中的 DATABASE_TYPE=mysql 和 MYSQL_* 配置
+  #   3. 取消 volumes 末尾 mysql_data 卷的注释
+  #   4. 首次部署时需执行 backend/sql/schema.sql 建表
+  # --------------------------------------------------------------------------
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: tradeflow-mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpass
+  #     MYSQL_DATABASE: trade_flow
+  #     MYSQL_USER: tradeflow
+  #     MYSQL_PASSWORD: change_me
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 30s
+
+# volumes:
+#   mysql_data:

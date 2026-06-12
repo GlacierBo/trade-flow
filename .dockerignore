@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+
+# Environment
+.env
+backend/.env
+
+# Database (runtime)
+*.db
+*.db-journal
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project docs
+README.md
+DEPLOY.md
+LICENSE

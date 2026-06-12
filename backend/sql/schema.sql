@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS fnos_trades (
   fee               DECIMAL(10,2) NOT NULL DEFAULT 0      COMMENT '佣金',
   net_amount        DECIMAL(12,2) NOT NULL                COMMENT '净额 (含佣金)',
   trade_type        VARCHAR(10) NOT NULL                  COMMENT '交易类型 (buy/sell)',
-  trade_date        DATE NOT NULL DEFAULT (CURRENT_DATE)  COMMENT '交易日期',
+  trade_date        DATE NOT NULL                          COMMENT '交易日期',
   user_id           INT NOT NULL DEFAULT 1                COMMENT '用户ID',
   created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP   COMMENT '创建时间',
   realized_profit   DECIMAL(12,2) DEFAULT 0               COMMENT '已实现收益 (买入记录累计)',

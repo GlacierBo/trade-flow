@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DECIMAL, TIMESTAMP, text
+from sqlalchemy import Column, Integer, String, DECIMAL, TIMESTAMP, text, func
 
 from app.database import Base
 
@@ -17,4 +17,4 @@ class Position(Base):
     market_value = Column(DECIMAL(12, 2), default=0)
     profit = Column(DECIMAL(12, 2), default=0)
     profit_rate = Column(DECIMAL(8, 2), default=0)
-    updated_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"))
+    updated_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"), onupdate=func.now())

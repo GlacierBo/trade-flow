@@ -18,7 +18,7 @@ class Trade(Base):
     fee = Column(DECIMAL(10, 2), nullable=False, default=0)
     net_amount = Column(DECIMAL(12, 2), nullable=False)
     trade_type = Column(String(10), nullable=False)
-    trade_date = Column(Date, nullable=False, server_default=text("CURRENT_DATE"))
+    trade_date = Column(Date, nullable=False)
     user_id = Column(Integer, nullable=False, default=1)
     created_at = Column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
     realized_profit = Column(DECIMAL(12, 2), default=0)
