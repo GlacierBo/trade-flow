@@ -49,7 +49,12 @@
       "Bash(awk '{print $5}')",
       "Bash(xargs -I{} taskkill //F //PID {})",
       "Bash(taskkill //F //PID 14680 //PID 8284 //PID 10540)",
-      "Bash(taskkill //F //IM python.exe)"
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(where python *)",
+      "Bash(py --version)",
+      "Bash(conda --version)",
+      "Bash(ls /c/Python*/python.exe)",
+      "Read(//c/Users/Administrator/AppData/Local/Programs/**)"
     ]
   }
 }
