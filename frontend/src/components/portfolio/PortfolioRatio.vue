@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useStockStore } from '../../stores/stock'
+import DataTransfer from '../common/DataTransfer.vue'
 
 const store = useStockStore()
 const showPrices = ref(true)
@@ -9,16 +10,6 @@ onMounted(() => {
   if (store.portfolioItems.length === 0) {
     store.loadPortfolioItems()
   }
-})
-
-const quickItems = computed(() => {
-  const seen = new Set()
-  return store.portfolioItems.filter(item => {
-    const key = `${item.contract}|${item.name}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
 })
 
 const grandTotal = computed(() => {
@@ -58,37 +49,9 @@ function barColor(pct) {
 </script>
 
 <template>
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-    <!-- 左侧：快捷列表 -->
-    <div class="lg:col-span-2">
-      <div class="bg-gray-800/50 rounded-2xl p-4 border border-gray-700/50">
-        <h2 class="text-lg font-black text-blue-400 mb-3">合约</h2>
-
-        <div v-if="quickItems.length === 0" class="text-center py-6 text-gray-500 text-sm">
-          暂无项目<br>
-          <span class="text-xs">添加后会自动显示</span>
-        </div>
-
-        <div v-else class="space-y-1.5 max-h-[600px] overflow-y-auto scrollbar-thin">
-          <div
-            v-for="item in quickItems"
-            :key="`${item.contract}-${item.name}`"
-            class="group bg-gray-700/30 hover:bg-gray-700/50 border border-gray-600/30 rounded-lg px-2.5 py-2 cursor-pointer transition-all active:scale-95 relative flex items-center justify-between"
-            @click="store.handlePortfolioTagClick(item)"
-          >
-            <div class="flex-1 min-w-0">
-              <div class="font-bold text-gray-100 text-xs truncate">
-                {{ item.name }}
-              </div>
-              <div class="text-xs text-gray-400 mt-0.5">{{ item.contract }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 右侧：比例计算 -->
-    <div class="lg:col-span-10">
+  <div class="grid grid-cols-1 gap-5">
+    <!-- 比例计算 -->
+    <div>
       <div class="bg-gray-800/50 rounded-2xl border border-gray-700/50 overflow-hidden">
         <!-- 头部 -->
         <div class="p-4 border-b border-gray-700/50">
@@ -112,6 +75,16 @@ function barColor(pct) {
                   <line x1="4" y1="4" x2="20" y2="20" />
                 </svg>
               </button>
+              <DataTransfer
+                page-name="持仓"
+                :get-export-data="() => ({ portfolioItems: store.portfolioItems })"
+                :on-import="async (data) => {
+                  if (data.portfolioItems) {
+                    store.portfolioItems = data.portfolioItems
+                    store.showToast('数据导入完成', 'success')
+                  }
+                }"
+              />
             </div>
             <button
               @click="store.openPortfolioModal()"

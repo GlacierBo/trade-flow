@@ -54,14 +54,16 @@
       "Bash(py --version)",
       "Bash(conda --version)",
       "Bash(ls /c/Python*/python.exe)",
-      "Read(//c/Users/Administrator/AppData/Local/Programs/**)"
+      "Read(//c/Users/Administrator/AppData/Local/Programs/**)",
       "Bash(taskkill //F //IM python.exe)",
       "Bash(dir *)",
       "Bash(docker compose up *)",
       "Bash(where docker *)",
       "Bash(docker-compose version *)",
       "Bash(docker compose *)",
-      "Read(//c/Program Files/**)"
+      "Read(//c/Program Files/**)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep -vE '\\(\\\\.\\\\.\\\\.\\\\/|\\\\.\\\\.\\\\.\\\\.|\\\\.\\\\.\\\\.\\\\}\\)')"
     ]
   }
 }

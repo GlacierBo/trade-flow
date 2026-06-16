@@ -4,6 +4,7 @@ import { useAllocator2Store } from '../../stores/allocator2'
 import { useContractStore } from '../../stores/contract'
 import { useStockStore } from '../../stores/stock'
 import Dropdown from '../common/Dropdown.vue'
+import DataTransfer from '../common/DataTransfer.vue'
 import * as echarts from 'echarts'
 
 const store = useAllocator2Store()
@@ -256,6 +257,16 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
       <div class="flex items-center gap-2">
         <button class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95" @click="openPositionForm">+ 新增品种</button>
         <button class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 transition-all active:scale-95" @click="showPositions = !showPositions; selectedVariety = null">查看持仓</button>
+        <DataTransfer
+          page-name="品种"
+          :get-export-data="() => ({ positions: store.positions })"
+          :on-import="async (data) => {
+            if (data.positions) {
+              store.positions = data.positions
+              store._save()
+            }
+          }"
+        />
       </div>
     </div>
 
@@ -278,7 +289,7 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
   </div>
 
   <!-- 新增品种弹窗 -->
-  <div v-if="showPositionForm" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+  <div v-if="showPositionForm" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overscroll-contain">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
         <h3 class="text-base font-black text-gray-100">新增品种</h3>
@@ -322,7 +333,7 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
   </div>
 
   <!-- 新增合约弹窗 -->
-  <div v-if="showContractForm" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+  <div v-if="showContractForm" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overscroll-contain">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn">
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
         <h3 class="text-base font-black text-gray-100">新增合约</h3>
@@ -348,7 +359,8 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
   </div>
 
   <!-- 编辑持仓弹窗 -->
-  <div v-if="store.editPositionId != null" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50" @click.self="store.clearEdit()">
+  <div v-if="store.editPositionId != null" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overscroll-contain"
+>
     <div class="bg-gray-800 border border-gray-700 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-fadeIn" @click.stop>
       <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/50">
         <div>

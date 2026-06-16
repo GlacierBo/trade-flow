@@ -59,9 +59,9 @@ async function submit() {
 <template>
   <div
     v-if="store.sellModalVisible && store.sellTarget"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overscroll-contain"
   >
-    <div class="bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-700 animate-fadeIn">
+    <div class="bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-700 animate-fadeIn" @keydown.enter="submit">
       <h3 class="text-lg font-black text-red-400 mb-4">卖出操作</h3>
       <div class="space-y-3">
         <div class="bg-gray-700/30 rounded-lg p-3 space-y-2">
@@ -108,7 +108,7 @@ async function submit() {
               : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400'
           ]"
         >
-          {{ isSubmitting ? '提交中...' : '确认卖出' }}
+          {{ isSubmitting ? '提交中…' : '确认卖出' }}
         </button>
       </div>
     </div>

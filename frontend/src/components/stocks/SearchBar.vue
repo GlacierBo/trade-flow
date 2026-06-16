@@ -29,7 +29,6 @@ function onSubmit() {
 
 function setSource(value) {
   store.source = value
-  // 如果有搜索关键词，自动重新搜索
   if (keyword.value.trim()) {
     store.search(keyword.value)
   }
@@ -51,14 +50,15 @@ function setSource(value) {
         <input
           v-model="keyword"
           type="text"
+          aria-label="搜索股票"
           placeholder="输入股票代码或名称，如 SH510500、格力电器"
-          class="w-full bg-gray-700/50 border border-gray-600/50 rounded-xl pl-10 pr-4 py-2.5 text-sm outline-none focus:border-blue-500/50 text-gray-100 placeholder-gray-500 transition-colors"
+          class="w-full bg-gray-700/30 border border-gray-600/30 rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition-all duration-200 text-gray-100 placeholder-gray-500 focus:border-blue-500/40 focus:bg-gray-700/50 focus:shadow-lg focus:shadow-blue-500/5"
           @input="onInput"
           @keydown.enter="onSubmit"
         />
       </div>
       <button
-        class="px-5 py-2.5 bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+        class="px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/20 transition-all duration-200 active:scale-95"
         @click="onSubmit"
       >
         搜索
@@ -67,17 +67,17 @@ function setSource(value) {
 
     <!-- 数据源切换 -->
     <div class="flex items-center gap-2">
-      <span class="text-xs text-gray-500">数据源：</span>
+      <span class="text-xs text-gray-500 font-medium">数据源：</span>
       <div class="flex gap-1.5">
         <button
           v-for="s in sources"
           :key="s.value"
           @click="setSource(s.value)"
           :class="[
-            'px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer select-none',
+            'px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer',
             currentSource === s.value
-              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-sm shadow-blue-500/10'
-              : 'bg-gray-700/40 text-gray-400 border border-gray-600/30 hover:bg-gray-600/40 hover:text-gray-300'
+              ? 'bg-blue-500/15 text-blue-400 border border-blue-500/30 shadow-sm shadow-blue-500/10'
+              : 'bg-gray-700/30 text-gray-400 border border-gray-600/20 hover:bg-gray-600/30 hover:text-gray-300 hover:border-gray-500/30'
           ]"
         >
           {{ s.label }}

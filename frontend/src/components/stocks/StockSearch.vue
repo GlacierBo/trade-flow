@@ -7,6 +7,7 @@ import SearchBar from './SearchBar.vue'
 import StockGrid from './StockGrid.vue'
 import StockDetailModal from './StockDetailModal.vue'
 import WatchlistPanel from './WatchlistPanel.vue'
+import DataTransfer from '../common/DataTransfer.vue'
 
 const watchlistStore = useWatchlistStore()
 const stocksStore = useStocksStore()
@@ -51,18 +52,33 @@ async function onToggleWatch(stock) {
 <template>
   <div class="space-y-5">
     <!-- 搜索栏 -->
-    <div class="bg-gray-800/60 rounded-2xl border border-gray-700/40 shadow-lg shadow-black/20 p-5">
+    <div class="bg-gray-800/40 border border-gray-700/30 rounded-2xl shadow-lg shadow-black/20 p-5">
       <SearchBar />
     </div>
 
     <!-- 搜索结果 -->
-    <div v-if="stocksStore.results.length > 0" class="bg-gray-800/60 rounded-2xl border border-gray-700/40 shadow-lg shadow-black/20 p-5">
+    <div v-if="stocksStore.results.length > 0" class="bg-gray-800/40 border border-gray-700/30 rounded-2xl shadow-lg shadow-black/20 p-5">
       <div class="flex items-center justify-between mb-4">
-        <h2 class="text-base font-bold text-gray-100">搜索结果</h2>
-        <button
-          @click="stocksStore.clearResults()"
-          class="text-xs text-gray-400 hover:text-gray-200 transition"
-        >清除结果</button>
+        <div class="flex items-center gap-2">
+          <div class="w-1 h-5 bg-blue-500 rounded-full" />
+          <h2 class="text-base font-black text-gray-100 tracking-tight">搜索结果</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <DataTransfer
+            page-name="自选"
+            :get-export-data="() => ({ watchlist: watchlistStore.items })"
+            :on-import="async (data) => {
+              if (data.watchlist) {
+                watchlistStore.items = data.watchlist
+                store.showToast('数据导入完成', 'success')
+              }
+            }"
+          />
+          <button
+            @click="stocksStore.clearResults()"
+            class="text-xs text-gray-400 hover:text-gray-200 transition"
+          >清除结果</button>
+        </div>
       </div>
       <StockGrid
         :stocks="stocksStore.results"
@@ -75,13 +91,13 @@ async function onToggleWatch(stock) {
     <!-- 搜索加载中 -->
     <div v-else-if="stocksStore.loading" class="flex items-center justify-center py-12">
       <div class="w-6 h-6 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin mr-3" />
-      <span class="text-sm text-gray-400">搜索中...</span>
+      <span class="text-sm text-gray-400">搜索中…</span>
     </div>
 
     <!-- 自选股面板 -->
     <div v-if="loading" class="flex flex-col items-center justify-center py-20">
       <div class="w-8 h-8 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin mb-3" />
-      <span class="text-sm text-gray-500">加载中...</span>
+      <span class="text-sm text-gray-500">加载中…</span>
     </div>
 
     <!-- 服务未连接提示 -->
@@ -111,20 +127,21 @@ async function onToggleWatch(stock) {
       <p class="text-xs text-gray-600">搜索并添加您关注的股票</p>
     </div>
     <div v-else-if="!loading && !serverError && !watchlistCollapsed">
-      <div
-        class="flex items-center justify-between px-5 py-3 bg-gray-800/50 rounded-t-2xl border border-gray-700/50 border-b-0 cursor-pointer hover:bg-gray-700/30 transition-colors"
-        @click="watchlistCollapsed = true"
-      >
-        <div class="flex items-center gap-2">
-          <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      <!-- Tab 样式的标题栏 -->
+      <div class="flex items-center justify-between pb-2 mb-3" style="border-bottom: 1px solid rgba(55,65,81,0.3);">
+        <button class="flex items-center gap-2 group cursor-pointer bg-transparent border-none p-0" @click="watchlistCollapsed = true" aria-label="收起自选">
+          <span class="text-sm font-bold text-gray-200 relative pb-1 after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-gradient-to-r after:from-amber-400 after:to-amber-300 after:rounded-full">我的自选</span>
+          <span class="bg-gradient-to-r from-amber-400/20 to-amber-300/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full shadow-sm shadow-amber-500/10">{{ watchlistStore.items.length }}</span>
+        </button>
+        <button
+          class="w-6 h-6 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-700/50 transition-all duration-200"
+          @click="watchlistCollapsed = true"
+          aria-label="收起"
+        >
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9" />
           </svg>
-          <span class="text-sm font-bold text-gray-200">我的自选</span>
-          <span class="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full">{{ watchlistStore.items.length }}</span>
-        </div>
-        <svg class="w-4 h-4 text-gray-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        </button>
       </div>
       <WatchlistPanel />
     </div>
@@ -132,14 +149,14 @@ async function onToggleWatch(stock) {
     <!-- 收起状态的悬浮按钮 -->
     <button
       v-if="watchlistCollapsed && watchlistStore.items.length > 0 && !loading && !serverError"
-      class="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 bg-gray-800 border border-gray-700 rounded-full shadow-xl shadow-black/30 hover:bg-gray-700 hover:border-gray-600 transition-all active:scale-95"
+      class="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-5 py-3 bg-gray-800/90 backdrop-blur-sm border border-gray-700/50 rounded-full shadow-2xl shadow-black/40 hover:bg-gray-700 hover:border-gray-600/60 hover:shadow-blue-500/10 transition-all duration-200 active:scale-95 group"
       @click="watchlistCollapsed = false"
     >
-      <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
+      <svg class="w-4 h-4 text-amber-400 transition-transform group-hover:scale-110 duration-200" viewBox="0 0 24 24" fill="currentColor">
         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
       </svg>
       <span class="text-sm font-bold text-gray-200">我的自选</span>
-      <span class="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-0.5 rounded-full">{{ watchlistStore.items.length }}</span>
+      <span class="bg-gradient-to-r from-amber-400/20 to-amber-300/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full">{{ watchlistStore.items.length }}</span>
     </button>
 
     <!-- 股票详情弹窗 -->

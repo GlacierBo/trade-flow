@@ -137,10 +137,10 @@ function onClear(p) {
   <!-- 修改价格弹窗 -->
   <div
     v-if="store.priceModalVisible"
-    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-    @click.self="store.closePriceModal()"
+    class="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overscroll-contain"
+
   >
-    <div class="bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-700/50 animate-fadeIn">
+    <div class="bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-700/50 animate-fadeIn" @keydown.enter="confirmPrice">
       <h3 class="text-lg font-bold text-gray-100 mb-5">修改现价</h3>
       <div>
         <label class="block text-xs font-medium text-gray-400 mb-2">当前现价</label>

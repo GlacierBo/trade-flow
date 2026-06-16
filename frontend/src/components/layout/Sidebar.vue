@@ -26,9 +26,9 @@ const menuItems = [
 ]
 
 const iconMap = {
-  home: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />`,
-  chart: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />`,
-  users: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />`,
+  home: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />`,
+  chart: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />`,
+  users: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />`,
   search: `<circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />`,
   star: `<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />`,
   grid: `<rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />`,
@@ -51,60 +51,103 @@ function handleLogout() {
     window.location.reload()
   })
 }
+
+function isActive(key) {
+  return route.name === key
+}
 </script>
 
 <template>
   <aside
-    class="bg-gray-800/80 border-r border-gray-700/50 flex flex-col h-screen fixed left-0 top-0 transition-all duration-300 z-30"
+    class="bg-gray-800/80 border-r border-gray-700/40 flex flex-col h-screen fixed left-0 top-0 transition-all duration-300 z-30 backdrop-blur-sm"
     :class="store.sidebarCollapsed ? 'w-16' : 'w-60'"
   >
     <!-- 折叠按钮 -->
     <button
-      class="absolute -right-3 top-5 w-6 h-6 flex items-center justify-center rounded-full bg-gray-700 border border-gray-600 text-gray-400 hover:text-gray-100 hover:bg-gray-600 transition-all shadow-lg z-10"
+      class="absolute -right-3 top-5 w-6 h-6 flex items-center justify-center rounded-full bg-gray-700 border border-gray-600 text-gray-400 hover:text-gray-100 hover:bg-gray-600 transition-all shadow-lg z-10 hover:shadow-blue-500/20 hover:border-blue-500/30"
       @click="store.toggleSidebar()"
       :title="store.sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'"
+      :aria-label="store.sidebarCollapsed ? '展开侧边栏' : '折叠侧边栏'"
     >
-      <svg class="w-3 h-3 transition-transform" :class="store.sidebarCollapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <svg class="w-3 h-3 transition-transform duration-300" :class="store.sidebarCollapsed ? 'rotate-180' : ''" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
 
     <!-- Logo -->
-    <div class="p-5 border-b border-gray-700/50">
-      <h1 class="text-lg font-black tracking-tight accent-gradient" :class="store.sidebarCollapsed ? 'text-center text-base' : ''">{{ store.sidebarCollapsed ? 'TF' : 'TradeFlow' }}</h1>
-      <p v-if="!store.sidebarCollapsed" class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Smart Trading Management</p>
+    <div class="p-5 border-b border-gray-700/40" :class="store.sidebarCollapsed ? 'text-center' : ''">
+      <h1 class="text-lg font-black tracking-tight accent-gradient" :class="store.sidebarCollapsed ? 'text-base' : ''">{{ store.sidebarCollapsed ? 'TF' : 'TradeFlow' }}</h1>
+      <p v-if="!store.sidebarCollapsed" class="text-[10px] text-gray-500 font-bold uppercase tracking-[0.2em] mt-0.5">Smart Trading Management</p>
     </div>
 
     <!-- Menu -->
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">
-      <button
+      <div
         v-for="item in menuItems.filter(i => !i.adminOnly || store.isAdmin)"
         :key="item.key"
-        @click="router.push({ name: item.key })"
-        :class="[
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all',
-          route.name === item.key
-            ? 'bg-blue-500/20 text-blue-400'
-            : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/50'
-        ]"
-        :title="store.sidebarCollapsed ? item.label : ''"
+        class="relative group"
       >
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" v-html="iconMap[item.icon]" />
-        <span v-if="!store.sidebarCollapsed">{{ item.label }}</span>
-      </button>
+        <!-- Active indicator bar -->
+        <div
+          v-if="isActive(item.key) && !store.sidebarCollapsed"
+          class="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5/6 bg-gradient-to-b from-blue-400 to-blue-500 rounded-full shadow-sm shadow-blue-500/50"
+        />
+
+        <button
+          @click="router.push({ name: item.key })"
+          :class="[
+            'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 relative',
+            isActive(item.key)
+              ? 'bg-gradient-to-r from-blue-500/15 to-blue-500/5 text-blue-400'
+              : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/40'
+          ]"
+          :title="store.sidebarCollapsed ? item.label : ''"
+        >
+          <!-- Icon with active dot indicator when collapsed -->
+          <span class="relative flex-shrink-0">
+            <svg
+              class="w-5 h-5 transition-transform duration-200 group-hover:scale-110"
+              :class="isActive(item.key) ? 'scale-110' : ''"
+              fill="none" viewBox="0 0 24 24" stroke="currentColor"
+              v-html="iconMap[item.icon]"
+              aria-hidden="true"
+            />
+            <!-- Active dot for collapsed mode -->
+            <span
+              v-if="isActive(item.key) && store.sidebarCollapsed"
+              class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-400 rounded-full shadow-sm shadow-blue-500/50"
+            />
+          </span>
+          <span v-if="!store.sidebarCollapsed">{{ item.label }}</span>
+
+          <!-- Subtle shimmer on hover -->
+          <div
+            v-if="!isActive(item.key) && !store.sidebarCollapsed"
+            class="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+            style="background: linear-gradient(90deg, transparent, rgba(255,255,255,0.02), transparent)"
+          />
+        </button>
+      </div>
     </nav>
 
+    <!-- Divider -->
+    <div class="mx-3 border-t border-gray-700/30" />
+
     <!-- Sponsor Button -->
-    <div class="px-3 pb-2">
+    <div class="px-3 py-2">
       <button
         @click="router.push({ name: 'sponsor' })"
         :class="[
-          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all',
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 relative group',
           route.name === 'sponsor'
-            ? 'bg-amber-500/20 text-amber-400'
-            : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/50'
+            ? 'bg-gradient-to-r from-amber-500/15 to-amber-500/5 text-amber-400'
+            : 'text-gray-400 hover:text-gray-100 hover:bg-gray-700/40'
         ]"
         :title="store.sidebarCollapsed ? '赞助作者' : ''"
       >
-        <svg class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg
+          class="w-5 h-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110"
+          :class="route.name === 'sponsor' ? 'scale-110' : ''"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
+        >
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
         </svg>
         <span v-if="!store.sidebarCollapsed">赞助作者</span>
@@ -112,21 +155,32 @@ function handleLogout() {
     </div>
 
     <!-- User Section -->
-    <div class="p-3 border-t border-gray-700/50 relative user-menu-area">
-      <div class="flex items-center gap-3 px-3 py-2" :class="store.sidebarCollapsed ? 'justify-center' : ''">
-        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-400 flex items-center justify-center text-white text-xs font-black flex-shrink-0">
-          {{ store.username.charAt(0).toUpperCase() }}
+    <div class="p-3 border-t border-gray-700/30 relative user-menu-area">
+      <div
+        class="flex items-center gap-3 px-3 py-2 rounded-xl transition-colors hover:bg-gray-700/20"
+        :class="store.sidebarCollapsed ? 'justify-center' : ''"
+      >
+        <!-- Avatar with gradient ring -->
+        <div class="relative flex-shrink-0">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs font-black">
+            {{ store.username.charAt(0).toUpperCase() }}
+          </div>
+          <div class="absolute -inset-0.5 rounded-full bg-gradient-to-br from-blue-400/30 to-purple-500/30 -z-10 blur-sm" />
         </div>
+
         <template v-if="!store.sidebarCollapsed">
           <div class="flex-1 min-w-0">
             <p class="text-sm font-bold text-gray-200 truncate">{{ store.username }}</p>
-            <p class="text-[10px] text-gray-500">已登录</p>
+            <p class="text-[10px] text-gray-500 font-medium flex items-center gap-1">
+              <span class="w-1.5 h-1.5 bg-green-500 rounded-full inline-block" />
+              已登录
+            </p>
           </div>
           <button
             @click="toggleMenu"
             class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-100 hover:bg-gray-700/50 transition-all flex-shrink-0"
           >
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="w-4 h-4 transition-transform duration-200" :class="showMenu ? 'rotate-90' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
@@ -135,32 +189,47 @@ function handleLogout() {
       </div>
 
       <!-- Dropdown Menu -->
-      <div
-        v-if="showMenu"
-        class="absolute bottom-full left-3 right-3 mb-1 bg-gray-700 border border-gray-600 rounded-xl overflow-hidden shadow-xl animate-fadeIn"
-      >
-        <button
-          @click="openProfile"
-          class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-300 hover:text-gray-100 hover:bg-gray-600/50 transition-all"
+      <transition name="dropdown">
+        <div
+          v-if="showMenu"
+          class="absolute bottom-full left-3 right-3 mb-2 bg-gray-700/95 backdrop-blur-lg border border-gray-600/50 rounded-xl overflow-hidden shadow-2xl shadow-black/30"
         >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-            <circle cx="12" cy="7" r="4" />
-          </svg>
-          个人中心
-        </button>
-        <button
-          @click="handleLogout"
-          class="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-bold text-gray-300 hover:text-red-400 hover:bg-red-500/10 transition-all"
-        >
-          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          退出登录
-        </button>
-      </div>
+          <button
+            @click="openProfile"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-300 hover:text-gray-100 hover:bg-gray-600/50 transition-all"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+            个人中心
+          </button>
+          <div class="h-px bg-gray-600/30 mx-3" />
+          <button
+            @click="handleLogout"
+            class="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-gray-300 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          >
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+            退出登录
+          </button>
+        </div>
+      </transition>
     </div>
   </aside>
 </template>
+
+<style scoped>
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease-out;
+}
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+</style>

@@ -54,9 +54,9 @@ async function submit() {
 <template>
   <div
     v-if="store.portfolioModalVisible"
-    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+    class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50 overscroll-contain"
   >
-    <div class="bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-700 animate-fadeIn">
+    <div class="bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-700 animate-fadeIn" @keydown.enter="submit">
       <h3 class="text-lg font-black text-blue-400 mb-4">新增持仓项目</h3>
       <div class="space-y-3">
         <div>
@@ -116,7 +116,7 @@ async function submit() {
               : 'bg-gradient-to-r from-blue-500 to-blue-400 hover:from-blue-400 hover:to-blue-300 shadow-blue-500/30'
           ]"
         >
-          {{ isSubmitting ? '提交中...' : '确认保存' }}
+          {{ isSubmitting ? '提交中…' : '确认保存' }}
         </button>
       </div>
     </div>
