@@ -64,11 +64,13 @@ if os.path.isdir(public_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
     # SPA catch-all：所有非 API、非静态文件的路由都返回 index.html
+    _real_public = os.path.realpath(public_dir)
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         # 尝试直接返回 public 目录下的文件（如 favicon.ico）
-        file_path = os.path.join(public_dir, full_path)
-        if full_path and os.path.isfile(file_path):
+        file_path = os.path.realpath(os.path.join(public_dir, full_path))
+        if full_path and file_path.startswith(_real_public) and os.path.isfile(file_path):
             return FileResponse(file_path)
         # 其余全部返回 index.html，由前端路由接管
         return FileResponse(index_file)

@@ -1,6 +1,6 @@
 # ==============================================================================
 # TradeFlow 多阶段 Dockerfile 【优化版】
-# 优化点：国内源、分层缓存、镜像瘦身、安全加固、构建提速、精简指令
+# 优化点：分层缓存、镜像瘦身、安全加固、构建提速、精简指令
 # ==============================================================================
 
 # ---------------------------------------------------------------------------
@@ -20,23 +20,19 @@ RUN npm run build
 
 # ---------------------------------------------------------------------------
 # Stage 2: Python 运行环境（最终镜像）
-# 替换Debian国内源 + 优化apt + 分层顺序优化 + 安全配置
+# 优化apt + 分层顺序优化 + 安全配置
 # ---------------------------------------------------------------------------
 FROM python:3.11-slim
 
 WORKDIR /app/backend
 
-# 重写 sources.list 为阿里云 Debian 源
-RUN echo "deb http://mirrors.aliyun.com/debian/ trixie main non-free contrib" > /etc/apt/sources.list \
-    && echo "deb http://mirrors.aliyun.com/debian/ trixie-updates main non-free contrib" >> /etc/apt/sources.list \
-    && echo "deb http://mirrors.aliyun.com/debian-security/ trixie-security main non-free contrib" >> /etc/apt/sources.list \
-    # 安装 curl 并清理缓存
-    && apt-get update \
+# 安装 curl 并清理缓存（使用 Debian 官方源）
+RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# 3. Python 全局优化：禁用pyc、开启缓冲、国内pip源（加速pip安装）
+# 3. Python 全局优化：禁用pyc、开启缓冲
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=off \
@@ -49,8 +45,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # 4. 优先拷贝依赖文件，利用Docker缓存（代码变更不重跑pip）
 COPY backend/requirements.txt ./
-# 使用阿里云pip源加速安装
-RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # 5. 拷贝后端源码
 COPY backend/ ./
