@@ -42,7 +42,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     DATABASE_TYPE=sqlite \
-    PORT=3001
+    PORT=3001 \
+    # 设置 UTF-8 语言环境，解决中文乱码问题
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
 
 # 4. 优先拷贝依赖文件，利用Docker缓存（代码变更不重跑pip）
 COPY backend/requirements.txt ./

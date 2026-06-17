@@ -63,7 +63,8 @@
       "Bash(docker compose *)",
       "Read(//c/Program Files/**)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(grep -vE '\\(\\\\.\\\\.\\\\.\\\\/|\\\\.\\\\.\\\\.\\\\.|\\\\.\\\\.\\\\.\\\\}\\)')"
+      "Bash(grep -vE '\\(\\\\.\\\\.\\\\.\\\\/|\\\\.\\\\.\\\\.\\\\.|\\\\.\\\\.\\\\.\\\\}\\)')",
+      "WebSearch"
     ]
   }
 }

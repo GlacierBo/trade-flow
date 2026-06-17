@@ -306,6 +306,10 @@ server {
     listen 80;
     server_name your-domain.com;
 
+    # UTF-8 编码（解决中文乱码）
+    charset utf-8;
+    charset_types text/plain text/css application/json application/javascript text/xml;
+
     # 前端静态文件
     location / {
         root /usr/share/nginx/html;
@@ -320,6 +324,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 禁用压缩传输，避免编码问题
+        proxy_set_header Accept-Encoding "";
 
         # WebSocket 支持（如需要）
         proxy_http_version 1.1;
@@ -348,6 +355,10 @@ server {
     listen 80;
     server_name your-domain.com;
 
+    # UTF-8 编码（解决中文乱码）
+    charset utf-8;
+    charset_types text/plain text/css application/json application/javascript text/xml;
+
     # 前端静态文件
     root /opt/tradeflow/frontend/dist;
     index index.html;
@@ -363,6 +374,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+
+        # 禁用压缩传输，避免编码问题
+        proxy_set_header Accept-Encoding "";
     }
 
     # 静态资源缓存

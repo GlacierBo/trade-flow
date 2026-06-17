@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import PORT
 from app.database import Base, engine
 from app.middleware.exception_handler import global_exception_handler
+from app.responses import CharsetJSONResponse
 from app.routers import stocks, watchlist, trades, positions, portfolio, trade_tags, auth, contracts
 from app.scheduler.manager import start_scheduler, stop_scheduler
 
@@ -32,7 +33,12 @@ async def lifespan(app: FastAPI):
     stop_scheduler()
 
 
-app = FastAPI(title="TradeFlow Server", version="1.0.0", lifespan=lifespan)
+app = FastAPI(
+    title="TradeFlow Server",
+    version="1.0.0",
+    lifespan=lifespan,
+    default_response_class=CharsetJSONResponse,
+)
 
 # 全局异常处理
 app.add_exception_handler(Exception, global_exception_handler)
