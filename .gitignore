@@ -134,6 +134,10 @@ cython_debug/
 # Node.js
 node_modules/
 dist/
+package-lock.json
+
+# Graphify output
+graphify-out/
 
 # IDE
 .idea/
