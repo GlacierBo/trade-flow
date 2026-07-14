@@ -48,7 +48,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 # 4. 优先拷贝依赖文件，利用Docker缓存（代码变更不重跑pip）
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 5. 拷贝后端源码
 COPY backend/ ./
