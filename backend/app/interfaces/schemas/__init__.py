@@ -7,11 +7,6 @@ from app.interfaces.schemas.position import UpdatePositionPriceRequest, Position
 from app.interfaces.schemas.portfolio import CreatePortfolioItemRequest, PortfolioItemResponse
 from app.interfaces.schemas.trade_tag import UpsertTradeTagRequest, TradeTagResponse
 from app.interfaces.schemas.contract import CreateContractRequest, UpdateContractRequest, ContractResponse
-from app.interfaces.schemas.allocator import (
-    CreateAllocatorPositionRequest,
-    UpdateAllocatorPositionRequest,
-    AllocatorPositionResponse,
-)
 from app.interfaces.schemas.auth import (
     LoginRequest,
     RegisterRequest,
@@ -53,8 +48,4 @@ __all__ = [
     "ChangePasswordRequest",
     "ResetPasswordRequest",
     "UserResponse",
-    # allocator
-    "CreateAllocatorPositionRequest",
-    "UpdateAllocatorPositionRequest",
-    "AllocatorPositionResponse",
 ]
