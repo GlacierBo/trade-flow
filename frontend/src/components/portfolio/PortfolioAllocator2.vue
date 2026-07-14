@@ -15,7 +15,7 @@ let chart = null
 let ro = null
 
 onMounted(() => {
-  store.init()
+  store.init(stockStore.userId)
   contractStore.fetchContracts(stockStore.userId)
   tryInit()
   setTimeout(tryInit, 300)
@@ -162,17 +162,22 @@ function openPositionForm() {
   showPositionForm.value = true
 }
 
-function submitPosition() {
+async function submitPosition() {
   if (!formVariety.value.trim() || !formContractCode.value || !formPrice.value) return
   const c = contractStore.contracts.find(x => x.code === formContractCode.value)
-  store.addPosition(
-    formVariety.value.trim(),
-    formContractCode.value,
-    c?.name || '',
-    Number(formPrice.value),
-  )
-  showPositionForm.value = false
-  updateChart()
+  try {
+    await store.addPosition(
+      formVariety.value.trim(),
+      formContractCode.value,
+      c?.name || '',
+      Number(formPrice.value),
+      stockStore.userId,
+    )
+    showPositionForm.value = false
+    updateChart()
+  } catch (e) {
+    console.error('添加持仓失败', e)
+  }
 }
 
 // ========== 新增合约弹窗（快速添加） ==========
@@ -200,9 +205,14 @@ function openEditPosition(id) {
   const p = store.positions.find(x => x.id === id)
   if (p) editPositionPrice.value = p.price
 }
-function saveEditPosition() {
+async function saveEditPosition() {
   if (store.editPositionId != null) {
-    store.updatePosition(store.editPositionId, { price: Number(editPositionPrice.value) })
+    try {
+      await store.updatePosition(store.editPositionId, { price: Number(editPositionPrice.value) }, stockStore.userId)
+    } catch (e) {
+      console.error('更新持仓失败', e)
+      return
+    }
     store.clearEdit()
     updateChart()
   }
@@ -229,9 +239,17 @@ function clickContract(contractId) {
   nextTick(() => openEditPosition(contractId))
 }
 
-function removePosition(id) {
-  store.removePosition(id)
-  updateChart()
+async function removePosition(id) {
+  try {
+    await store.removePosition(id, stockStore.userId)
+    updateChart()
+  } catch (e) {
+    console.error('删除持仓失败', e)
+  }
+}
+async function handleDeletePosition() {
+  await removePosition(store.editPositionId)
+  store.clearEdit()
 }
 
 function fmt(v) { return Number(v || 0).toFixed(2) }
@@ -262,8 +280,8 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
           :get-export-data="() => ({ positions: store.positions })"
           :on-import="async (data) => {
             if (data.positions) {
-              store.positions = data.positions
-              store._save()
+              await store.replaceAllPositions(data.positions, stockStore.userId)
+              updateChart()
             }
           }"
         />
@@ -386,7 +404,7 @@ function fmt(v) { return Number(v || 0).toFixed(2) }
           </div>
           <span class="text-xs font-mono text-gray-400">{{ store.totalAmount ? ((editPositionPrice / store.totalAmount) * 100).toFixed(1) : 0 }}%</span>
         </div>
-        <button class="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-xl transition-all" @click="removePosition(store.editPositionId); store.clearEdit()">删除此持仓</button>
+        <button class="w-full py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold rounded-xl transition-all" @click="handleDeletePosition">删除此持仓</button>
       </div>
       <div class="flex gap-3 px-5 pb-5">
         <button class="flex-1 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-xl text-gray-300 font-bold text-sm transition-all" @click="store.clearEdit()">取消</button>

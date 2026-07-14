@@ -298,3 +298,31 @@ export async function fetchUsers(page = 1, pageSize = 20) {
     throw new Error('获取用户列表失败')
   }
 }
+
+// ============================================
+// 持仓分配器 API
+// ============================================
+
+export async function fetchAllocatorPositions(userId) {
+  return await request(`/allocator?user_id=${userId}`)
+}
+
+export async function createAllocatorPosition(data, userId) {
+  return await request('/allocator', {
+    method: 'POST',
+    body: JSON.stringify({ ...data, user_id: userId }),
+  })
+}
+
+export async function updateAllocatorPosition(id, data, userId) {
+  return await request(`/allocator/${id}?user_id=${userId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteAllocatorPosition(id, userId) {
+  return await request(`/allocator/${id}?user_id=${userId}`, {
+    method: 'DELETE',
+  })
+}

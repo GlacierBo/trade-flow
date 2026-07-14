@@ -49,10 +49,9 @@ const sections = computed(() => [
     getData: () => ({
       positions: allocator2Store.positions,
     }),
-    setData: (data) => {
+    setData: async (data) => {
       if (data.positions) {
-        allocator2Store.positions = data.positions
-        allocator2Store._save()
+        await allocator2Store.replaceAllPositions(data.positions, stockStore.userId)
       }
     },
   },
@@ -126,7 +125,7 @@ async function handleCopy() {
   }
 }
 
-function handleSave() {
+async function handleSave() {
   editError.value = ''
   let data
   try {
@@ -141,10 +140,14 @@ function handleSave() {
   }
   const section = sections.value.find(s => s.key === activeSection.value)
   if (section) {
-    section.setData(data)
-    saved.value = activeSection.value
-    setTimeout(() => { saved.value = '' }, 2000)
-    refreshJson()
+    try {
+      await section.setData(data)
+      saved.value = activeSection.value
+      setTimeout(() => { saved.value = '' }, 2000)
+      refreshJson()
+    } catch (e) {
+      editError.value = `保存失败: ${e.message}`
+    }
   }
 }
 

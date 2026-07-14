@@ -11,7 +11,7 @@ from app.infrastructure.config import PORT
 from app.infrastructure.database import Base, engine
 from app.interfaces.middleware.exception_handler import global_exception_handler
 from app.interfaces.responses import CharsetJSONResponse
-from app.interfaces.routers import stocks, watchlist, trades, positions, portfolio, trade_tags, auth, contracts
+from app.interfaces.routers import stocks, watchlist, trades, positions, portfolio, trade_tags, auth, contracts, allocator
 from app.infrastructure.scheduler.manager import start_scheduler, stop_scheduler
 
 logging.basicConfig(level=logging.INFO)
@@ -59,6 +59,7 @@ app.include_router(portfolio.router)
 app.include_router(trade_tags.router)
 app.include_router(auth.router)
 app.include_router(contracts.router)
+app.include_router(allocator.router)
 
 # 静态文件 & SPA 路由
 public_dir = os.path.join(os.path.dirname(__file__), "public")
