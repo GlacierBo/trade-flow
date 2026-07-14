@@ -62,5 +62,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:3001/docs || exit 1
 
-# 启动命令（保留原有逻辑）
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3001"]
+# 启动命令
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3001"]
