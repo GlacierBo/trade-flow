@@ -19,6 +19,7 @@ import ChangePasswordForm from './components/auth/ChangePasswordForm.vue'
 import StockSearch from './components/stocks/StockSearch.vue'
 import PortfolioAllocator2 from './components/portfolio/PortfolioAllocator2.vue'
 import ContractManagement from './components/contract/ContractManagement.vue'
+import DataManagement from './components/common/DataManagement.vue'
 
 const store = useStockStore()
 const route = useRoute()
@@ -131,6 +132,11 @@ onMounted(() => {
 
       <!-- 持仓比例页 -->
       <PortfolioRatio v-if="route.name === 'portfolio'" />
+
+      <!-- 数据管理页 -->
+      <div v-if="route.name === 'data'" class="py-4">
+        <DataManagement />
+      </div>
 
       <!-- 用户管理页（仅管理员） -->
       <UserManagement v-if="route.name === 'users'" />

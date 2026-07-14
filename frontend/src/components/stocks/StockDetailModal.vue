@@ -7,14 +7,16 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const changePct = computed(() => props.stock.changePercent ?? props.stock.percent)
+
 const priceClass = computed(() => {
-  if (props.stock.percent > 0) return 'text-red-400'
-  if (props.stock.percent < 0) return 'text-green-400'
+  if (changePct.value > 0) return 'text-red-400'
+  if (changePct.value < 0) return 'text-green-400'
   return 'text-gray-100'
 })
 
-const isUp = computed(() => props.stock.percent > 0)
-const isDown = computed(() => props.stock.percent < 0)
+const isUp = computed(() => changePct.value > 0)
+const isDown = computed(() => changePct.value < 0)
 
 function fmtPrice(v) {
   if (!v && v !== 0) return '--'
@@ -24,7 +26,7 @@ function fmtPrice(v) {
 function fmtPercent(v) {
   if (!v && v !== 0) return '0.00%'
   const sign = v > 0 ? '+' : ''
-  return `${sign}${(v * 100).toFixed(2)}%`
+  return `${sign}${v.toFixed(2)}%`
 }
 </script>
 
@@ -53,20 +55,20 @@ function fmtPercent(v) {
       <!-- Price Section -->
       <div class="p-6 text-center border-b border-gray-700/30 bg-gradient-to-b from-gray-800/60 to-transparent">
         <div class="text-5xl font-black font-mono tracking-tight mb-3" :class="priceClass">
-          {{ fmtPrice(stock.now) }}
+          {{ fmtPrice(stock.price ?? stock.now) }}
         </div>
         <span
           class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-bold font-mono"
           :class="{
             'bg-red-500/15 text-red-400': isUp,
             'bg-green-500/15 text-green-400': isDown,
-            'bg-gray-600/30 text-gray-400': !stock.percent,
+            'bg-gray-600/30 text-gray-400': !changePct,
           }"
         >
           <svg v-if="isUp" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15" /></svg>
           <svg v-else-if="isDown" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9" /></svg>
           <span v-else class="w-3.5 h-3.5 inline-block">—</span>
-          {{ fmtPercent(stock.percent) }}
+          {{ fmtPercent(changePct) }}
         </span>
       </div>
 

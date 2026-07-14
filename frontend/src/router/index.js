@@ -11,6 +11,7 @@ const routes = [
   { path: '/contracts', name: 'contracts', component: Placeholder },
   { path: '/portfolio', name: 'portfolio', component: Placeholder },
   { path: '/users', name: 'users', component: Placeholder },
+  { path: '/data', name: 'data', component: Placeholder },
   { path: '/sponsor', name: 'sponsor', component: Placeholder },
 ]
 

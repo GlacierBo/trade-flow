@@ -5,7 +5,6 @@ import { useStocksStore } from '../../stores/stocks'
 import { useStockStore } from '../../stores/stock'
 import SearchBar from './SearchBar.vue'
 import StockGrid from './StockGrid.vue'
-import StockDetailModal from './StockDetailModal.vue'
 import WatchlistPanel from './WatchlistPanel.vue'
 import DataTransfer from '../common/DataTransfer.vue'
 
@@ -15,7 +14,6 @@ const store = useStockStore()
 
 const serverError = ref(false)
 const loading = ref(true)
-const selectedStock = ref(null)
 const watchlistCollapsed = ref(true)
 
 onMounted(async () => {
@@ -33,10 +31,6 @@ onMounted(async () => {
 onUnmounted(() => {
   watchlistStore.stopPolling()
 })
-
-function onStockClick(stock) {
-  selectedStock.value = stock
-}
 
 async function onToggleWatch(stock) {
   if (watchlistStore.isWatched(stock.code)) {
@@ -83,7 +77,6 @@ async function onToggleWatch(stock) {
       <StockGrid
         :stocks="stocksStore.results"
         :watched-codes="watchlistStore.codes"
-        @stock-click="onStockClick"
         @toggle-watch="onToggleWatch"
       />
     </div>
@@ -159,13 +152,5 @@ async function onToggleWatch(stock) {
       <span class="bg-gradient-to-r from-amber-400/20 to-amber-300/20 text-amber-400 text-xs font-bold px-2 py-0.5 rounded-full">{{ watchlistStore.items.length }}</span>
     </button>
 
-    <!-- 股票详情弹窗 -->
-    <StockDetailModal
-      v-if="selectedStock"
-      :stock="selectedStock"
-      :is-watched="watchlistStore.isWatched(selectedStock?.code)"
-      @close="selectedStock = null"
-      @toggle-watch="onToggleWatch"
-    />
   </div>
 </template>

@@ -64,7 +64,21 @@
       "Read(//c/Program Files/**)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "Bash(grep -vE '\\(\\\\.\\\\.\\\\.\\\\/|\\\\.\\\\.\\\\.\\\\.|\\\\.\\\\.\\\\.\\\\}\\)')",
-      "WebSearch"
+      "WebSearch",
+      "Bash(where rustc *)",
+      "Bash(where cargo *)",
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(rustup show *)",
+      "Bash(rustup toolchain *)",
+      "Read(//c/Users/Administrator/.cargo/bin//**)",
+      "Bash(rustup component *)",
+      "Bash(CARGO_HOME=\"/c/Users/Administrator/.cargo\" CARGO=cargo RUSTUP_HOME=\"/c/Users/Administrator/.rustup\" rustup which cargo --toolchain stable-x86_64-pc-windows-gnu)",
+      "Bash(rustup which *)",
+      "Bash(rustup run *)",
+      "Bash(rustup update *)",
+      "Bash(timeout 60 cat)",
+      "Bash(pip show *)"
     ]
   }
 }

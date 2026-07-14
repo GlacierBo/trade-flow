@@ -8,8 +8,8 @@ const props = defineProps({
 
 const emit = defineEmits(['click', 'toggle-watch'])
 
-const isUp = computed(() => props.stock.percent > 0)
-const isDown = computed(() => props.stock.percent < 0)
+const isUp = computed(() => (props.stock.changePercent ?? props.stock.percent) > 0)
+const isDown = computed(() => (props.stock.changePercent ?? props.stock.percent) < 0)
 
 const priceClass = computed(() => {
   if (isUp.value) return 'text-red-400'
@@ -37,7 +37,7 @@ function fmtPrice(v) {
 function fmtPercent(v) {
   if (!v && v !== 0) return '0.00%'
   const sign = v > 0 ? '+' : ''
-  return `${sign}${(v * 100).toFixed(2)}%`
+  return `${sign}${v.toFixed(2)}%`
 }
 </script>
 
@@ -77,17 +77,17 @@ function fmtPercent(v) {
 
     <div class="flex items-baseline gap-3 mb-3">
       <span class="text-2xl font-bold font-mono tracking-tight tabular-nums" :class="priceClass">
-        {{ fmtPrice(stock.now) }}
+        {{ fmtPrice(stock.price ?? stock.now) }}
       </span>
       <span
         class="px-2 py-0.5 rounded text-xs font-bold font-mono"
         :class="{
           'bg-red-500/15 text-red-400': isUp,
           'bg-green-500/15 text-green-400': isDown,
-          'bg-gray-600/30 text-gray-400': !stock.percent,
+          'bg-gray-600/30 text-gray-400': !(stock.changePercent ?? stock.percent),
         }"
       >
-        {{ fmtPercent(stock.percent) }}
+        {{ fmtPercent(stock.changePercent ?? stock.percent) }}
       </span>
     </div>
 
