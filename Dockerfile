@@ -26,8 +26,12 @@ FROM python:3.11-slim
 
 WORKDIR /app/backend
 
-# 安装 curl 并清理缓存（使用 Debian 官方源）
-RUN apt-get update \
+# 安装 curl 并清理缓存（使用清华镜像源加速国内构建）
+RUN sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list 2>/dev/null; \
+    sed -i 's|security.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list 2>/dev/null; \
+    sed -i 's|deb.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null; \
+    sed -i 's|security.debian.org|mirrors.tuna.tsinghua.edu.cn|g' /etc/apt/sources.list.d/debian.sources 2>/dev/null; \
+    apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -39,13 +43,12 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     DATABASE_TYPE=sqlite \
     PORT=3001 \
-    # 设置 UTF-8 语言环境，解决中文乱码问题
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
 
 # 4. 优先拷贝依赖文件，利用Docker缓存（代码变更不重跑pip）
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
 
 # 5. 拷贝后端源码
 COPY backend/ ./
