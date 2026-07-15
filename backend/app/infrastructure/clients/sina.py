@@ -78,7 +78,7 @@ async def get_stocks(codes: list[str]) -> list[dict]:
     try:
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(url, headers=HEADERS)
-            text = resp.text
+            text = resp.content.decode("gbk", errors="replace")
     except Exception:
         return []
 

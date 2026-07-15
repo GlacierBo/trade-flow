@@ -56,6 +56,19 @@ export const useContractStore = defineStore('contract', {
       }
     },
 
+    async batchReplace(items, userId) {
+      this.loading = true
+      this.error = ''
+      try {
+        await api.batchReplaceContracts(items, userId)
+        await this.fetchContracts(userId)
+      } catch (err) {
+        this.error = err.message || '批量替换失败'
+      } finally {
+        this.loading = false
+      }
+    },
+
     async removeContract(code, userId) {
       this.loading = true
       this.error = ''

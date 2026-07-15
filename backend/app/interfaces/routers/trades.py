@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database import get_db
-from app.domain.models import Trade
-from app.interfaces.schemas import ApiResponse, CreateTradeRequest
+from app.domain.models import Trade, Position
+from app.interfaces.schemas import ApiResponse, CreateTradeRequest, BatchTradeRequest
 from app.application.services.trades import generate_buy_order_no, recalculate_position
 
 logger = logging.getLogger(__name__)
@@ -145,6 +145,78 @@ def create_trade(body: CreateTradeRequest, db: Session = Depends(get_db)):
         db.commit()
 
         return ApiResponse(data={"status": "success", "trade_id": trade.id})
+
+
+@router.put("/batch")
+def batch_replace_trades(body: BatchTradeRequest, db: Session = Depends(get_db)):
+    """批量替换交易记录（先删后插，自动重算持仓）"""
+    user_id = body.user_id
+
+    contracts = set()
+    for t in body.trades:
+        contracts.add(t.contract)
+        for s in t.sells:
+            contracts.add(t.contract)
+
+    # 删除旧数据
+    db.query(Trade).filter(Trade.user_id == user_id).delete()
+    db.query(Position).filter(Position.user_id == user_id).delete()
+
+    # 插入买入记录
+    for t in body.trades:
+        amount = t.amount or t.price * abs(t.shares)
+        fee = t.fee or 0
+        net_amount = t.net_amount or (amount + fee)
+        trade_date = date.fromisoformat(t.trade_date) if t.trade_date else date.today()
+
+        buy = Trade(
+            buy_order_no=t.buy_order_no,
+            contract=t.contract,
+            name=t.name,
+            price=t.price,
+            shares=t.shares,
+            remaining_shares=t.remaining_shares,
+            amount=amount,
+            fee=fee,
+            net_amount=net_amount,
+            trade_type='buy',
+            trade_date=trade_date,
+            realized_profit=t.realized_profit or 0,
+            single_profit=0,
+            user_id=user_id,
+        )
+        db.add(buy)
+        db.flush()
+
+        # 插入卖出记录
+        for s in t.sells:
+            sell_amount = s.net_amount or -(s.price * abs(s.shares))
+            sell_fee = s.fee or 0
+            sell_date = date.fromisoformat(s.trade_date) if s.trade_date else date.today()
+            sell = Trade(
+                buy_order_no=t.buy_order_no,
+                contract=t.contract,
+                name=t.name,
+                price=s.price,
+                shares=-abs(s.shares),
+                remaining_shares=0,
+                amount=sell_amount,
+                fee=sell_fee,
+                net_amount=sell_amount,
+                trade_type='sell',
+                trade_date=sell_date,
+                realized_profit=0,
+                single_profit=s.single_profit or 0,
+                user_id=user_id,
+            )
+            db.add(sell)
+
+    # 重算持仓
+    for contract in contracts:
+        recalculate_position(db, contract, user_id)
+
+    db.commit()
+    return ApiResponse(data={"status": "success", "count": len(body.trades)})
 
 
 @router.delete("/{trade_id}")

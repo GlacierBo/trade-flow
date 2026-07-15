@@ -1,5 +1,5 @@
 """交易相关数据传输对象"""
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -40,3 +40,37 @@ class TradeResponse(BaseModel):
     realized_profit: float
     single_profit: float
     sells: list = []
+
+
+class BatchTradeSellItem(BaseModel):
+    """批量替换中的卖出记录"""
+    price: float
+    shares: int
+    fee: float = 0
+    net_amount: float = 0
+    single_profit: float = 0
+    trade_date: str = ""
+    user_id: int = 1
+
+
+class BatchTradeBuyItem(BaseModel):
+    """批量替换中的买入记录"""
+    buy_order_no: str
+    contract: str
+    name: str
+    price: float
+    shares: int
+    remaining_shares: int
+    fee: float = 0
+    net_amount: float = 0
+    amount: float = 0
+    trade_date: str = ""
+    realized_profit: float = 0
+    user_id: int = 1
+    sells: List[BatchTradeSellItem] = []
+
+
+class BatchTradeRequest(BaseModel):
+    """批量替换交易请求"""
+    trades: List[BatchTradeBuyItem]
+    user_id: int = 1

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database import get_db
 from app.domain.models import TradeTag
-from app.interfaces.schemas import ApiResponse, UpsertTradeTagRequest
+from app.interfaces.schemas import ApiResponse, UpsertTradeTagRequest, BatchTradeTagRequest
 
 router = APIRouter(prefix="/api/trade-tags", tags=["trade-tags"])
 
@@ -47,6 +47,21 @@ def upsert_trade_tag(body: UpsertTradeTagRequest, db: Session = Depends(get_db))
 
     db.commit()
     return ApiResponse(data={"status": "success"})
+
+
+@router.put("/batch")
+def batch_replace_trade_tags(body: BatchTradeTagRequest, db: Session = Depends(get_db)):
+    """批量替换交易标签（先删后插）"""
+    db.query(TradeTag).filter(TradeTag.user_id == body.user_id).delete()
+    for item in body.items:
+        db.add(TradeTag(
+            contract=item.contract,
+            name=item.name,
+            latest_price=0,
+            user_id=body.user_id,
+        ))
+    db.commit()
+    return ApiResponse(data={"status": "success", "count": len(body.items)})
 
 
 @router.delete("/{tag_id}")

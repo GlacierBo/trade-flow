@@ -300,6 +300,45 @@ export async function fetchUsers(page = 1, pageSize = 20) {
 }
 
 // ============================================
+// 批量替换 API（用于数据管理页面）
+// ============================================
+
+export async function batchReplaceTrades(trades, userId) {
+  return await request('/trades/batch', {
+    method: 'PUT',
+    body: JSON.stringify({ trades, user_id: userId }),
+  })
+}
+
+export async function batchReplaceTradeTags(items, userId) {
+  return await request('/trade-tags/batch', {
+    method: 'PUT',
+    body: JSON.stringify({ items, user_id: userId }),
+  })
+}
+
+export async function batchReplaceWatchlist(items) {
+  return await request('/watchlist/batch', {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
+  })
+}
+
+export async function batchReplaceContracts(items, userId) {
+  return await request('/contracts/batch', {
+    method: 'PUT',
+    body: JSON.stringify({ items, user_id: userId }),
+  })
+}
+
+export async function batchReplacePortfolioItems(items, userId) {
+  return await request('/portfolio/batch', {
+    method: 'PUT',
+    body: JSON.stringify({ items, user_id: userId }),
+  })
+}
+
+// ============================================
 // 持仓分配器 API
 // ============================================
 

@@ -68,6 +68,21 @@ export const useWatchlistStore = defineStore('watchlist', {
       }
     },
 
+    async batchReplace(items) {
+      this.loading = true
+      try {
+        await request('/watchlist/batch', {
+          method: 'PUT',
+          body: JSON.stringify({ items }),
+        })
+        await this.fetchWatchlist()
+      } catch (err) {
+        this.error = err.message || '批量替换失败'
+      } finally {
+        this.loading = false
+      }
+    },
+
     startPolling() {
       this.stopPolling()
       this._timer = setInterval(() => this.refresh(), POLL_INTERVAL)

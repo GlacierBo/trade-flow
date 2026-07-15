@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database import get_db
 from app.domain.models import PortfolioItem
-from app.interfaces.schemas import ApiResponse, CreatePortfolioItemRequest
+from app.interfaces.schemas import ApiResponse, CreatePortfolioItemRequest, BatchPortfolioRequest
 
 router = APIRouter(prefix="/api/portfolio", tags=["portfolio"])
 
@@ -71,6 +71,22 @@ def create_portfolio_item(body: CreatePortfolioItemRequest, db: Session = Depend
         "user_id": item.user_id,
         "created_at": item.created_at.isoformat() if item.created_at else None,
     })
+
+
+@router.put("/batch")
+def batch_replace_portfolio(body: BatchPortfolioRequest, db: Session = Depends(get_db)):
+    """批量替换持仓比例（先删后插）"""
+    db.query(PortfolioItem).filter(PortfolioItem.user_id == body.user_id).delete()
+    for item in body.items:
+        db.add(PortfolioItem(
+            name=item.name,
+            contract=item.contract,
+            tag=item.tag,
+            price=item.price,
+            user_id=body.user_id,
+        ))
+    db.commit()
+    return ApiResponse(data={"status": "success", "count": len(body.items)})
 
 
 @router.delete("/{item_id}")
