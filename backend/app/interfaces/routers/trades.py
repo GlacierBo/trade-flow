@@ -139,7 +139,7 @@ def create_trade(body: CreateTradeRequest, db: Session = Depends(get_db)):
         db.add(trade)
 
         buy_record.remaining_shares -= sell_shares
-        buy_record.realized_profit += single_profit
+        buy_record.realized_profit = float(buy_record.realized_profit or 0) + single_profit
 
         recalculate_position(db, buy_record.contract, body.user_id)
         db.commit()
@@ -182,7 +182,7 @@ def delete_trade(trade_id: int, user_id: int = 1, db: Session = Depends(get_db))
         if buy_record:
             sell_shares = abs(trade.shares)
             buy_record.remaining_shares += sell_shares
-            buy_record.realized_profit -= trade.single_profit
+            buy_record.realized_profit = float(buy_record.realized_profit or 0) - float(trade.single_profit or 0)
 
         db.delete(trade)
 

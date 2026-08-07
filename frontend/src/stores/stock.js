@@ -7,6 +7,7 @@ export const useStockStore = defineStore('stock', {
     positions: [],
     tags: [],
     searchQuery: '',
+    hideClearedTrades: false,
 
     // Auth
     isAuthenticated: false,
@@ -41,6 +42,7 @@ export const useStockStore = defineStore('stock', {
     confirmModalVisible: false,
     confirmMessage: '',
     confirmCallback: null,
+    confirmLabel: '确认删除',
 
     // Price modal
     priceModalVisible: false,
@@ -61,9 +63,14 @@ export const useStockStore = defineStore('stock', {
 
   getters: {
     filteredTrades: (state) => {
-      if (!state.searchQuery) return state.trades
+      let list = state.trades
+      // 隐藏可卖为 0（已全部卖出）的交易记录
+      if (state.hideClearedTrades) {
+        list = list.filter(t => t.remaining_shares > 0)
+      }
+      if (!state.searchQuery) return list
       const q = state.searchQuery.toLowerCase()
-      return state.trades.filter(t =>
+      return list.filter(t =>
         t.contract.toLowerCase().includes(q) ||
         t.name.toLowerCase().includes(q) ||
         t.buy_order_no.toLowerCase().includes(q)
@@ -347,15 +354,17 @@ export const useStockStore = defineStore('stock', {
       this.sellTarget = null
     },
 
-    showConfirm(message, callback) {
+    showConfirm(message, callback, label = '确认删除') {
       this.confirmMessage = message
       this.confirmCallback = callback
+      this.confirmLabel = label
       this.confirmModalVisible = true
     },
 
     closeConfirm() {
       this.confirmModalVisible = false
       this.confirmCallback = null
+      this.confirmLabel = '确认删除'
     },
 
     executeConfirm() {

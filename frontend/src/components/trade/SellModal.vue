@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useStockStore } from '../../stores/stock'
 
 const store = useStockStore()
@@ -8,6 +8,16 @@ const price = ref('')
 const shares = ref('')
 const errorMsg = ref('')
 const isSubmitting = ref(false) // 防止重复提交
+
+// 本次卖出的预估收益 = (卖出价格 - 买入价格) × 卖出份额
+const estimatedProfit = computed(() => {
+  const p = parseFloat(price.value)
+  const s = parseInt(shares.value)
+  if (!store.sellTarget || !p || p <= 0 || !s || s <= 0) return null
+  return (p - store.sellTarget.buyPrice) * s
+})
+
+const hasValidInput = computed(() => estimatedProfit.value !== null)
 
 watch(() => store.sellModalVisible, (v) => {
   if (v) {
@@ -91,6 +101,20 @@ async function submit() {
             class="w-full bg-gray-700/50 border border-gray-600 rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-gray-100 text-sm placeholder-gray-500"
           >
           <p v-if="errorMsg" class="text-xs text-red-400 mt-1">{{ errorMsg }}</p>
+        </div>
+        <!-- 本次卖出预估收益 -->
+        <div v-if="hasValidInput" class="bg-gray-700/30 rounded-lg p-3 flex items-center justify-between">
+          <span class="text-xs font-bold text-gray-400">预估收益</span>
+          <span
+            class="text-base font-black"
+            :class="estimatedProfit >= 0 ? 'text-red-400' : 'text-green-400'"
+          >
+            {{ estimatedProfit >= 0 ? '+' : '' }}¥{{ estimatedProfit.toFixed(2) }}
+          </span>
+        </div>
+        <div v-else class="bg-gray-700/30 rounded-lg p-3 flex items-center justify-between">
+          <span class="text-xs font-bold text-gray-400">预估收益</span>
+          <span class="text-sm text-gray-500">填写价格与份额后自动计算</span>
         </div>
       </div>
       <div class="flex gap-3 mt-5">

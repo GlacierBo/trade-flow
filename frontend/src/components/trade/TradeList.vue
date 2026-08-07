@@ -43,7 +43,7 @@ function onDelete(trade, tradeType) {
 </script>
 
 <template>
-  <div class="space-y-3 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+  <div class="space-y-3 pr-1">
     <!-- 空状态 -->
     <div v-if="store.filteredTrades.length === 0" class="flex flex-col items-center justify-center py-16 text-gray-500">
       <svg class="w-12 h-12 mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,13 +60,20 @@ function onDelete(trade, tradeType) {
       class="group"
     >
       <!-- 买入记录卡片 -->
-      <div class="bg-gray-700/30 hover:bg-gray-700/40 border border-gray-600/30 rounded-xl p-4 transition-all duration-200">
+      <div
+        class="bg-gray-700/30 hover:bg-gray-700/40 border border-gray-600/30 rounded-xl p-4 transition-all duration-200"
+        :class="t.remaining_shares === 0 ? 'opacity-50 grayscale' : ''"
+      >
         <!-- 顶部：名称 + 标签 + 操作按钮 -->
         <div class="flex items-start justify-between mb-3">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span class="font-bold text-gray-100 text-sm">{{ t.name }}</span>
               <span class="text-xs text-gray-500 font-mono">{{ t.contract }}</span>
+              <span
+                v-if="t.remaining_shares === 0"
+                class="text-[10px] bg-gray-600/40 text-gray-400 px-1.5 py-0.5 rounded border border-gray-600/40"
+              >已全部卖出</span>
             </div>
             <div class="flex items-center gap-2 mt-1">
               <span class="text-xs text-blue-400/70 font-mono">{{ t.buy_order_no }}</span>

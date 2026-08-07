@@ -27,7 +27,7 @@ const store = useStockStore()
         <button
           @click="store.executeConfirm()"
           class="flex-1 py-2.5 bg-gradient-to-r from-red-500 to-red-400 hover:from-red-400 hover:to-red-300 rounded-xl text-white font-black text-sm shadow-lg shadow-red-500/25 transition-all duration-200 active:scale-[0.98]"
-        >确认删除</button>
+        >{{ store.confirmLabel }}</button>
       </div>
     </div>
   </div>

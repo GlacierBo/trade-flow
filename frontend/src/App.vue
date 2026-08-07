@@ -58,7 +58,7 @@ onMounted(() => {
       <!-- 网格交易页 -->
       <div v-if="route.name === 'home'" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
         <!-- 左侧：交易明细 -->
-        <div class="lg:col-span-7">
+        <div class="lg:col-span-8">
           <div class="bg-gray-800/40 border border-gray-700/30 rounded-2xl shadow-lg shadow-black/20 overflow-hidden">
             <!-- 头部 -->
             <div class="flex items-center justify-between px-5 py-4 border-b border-gray-700/30 bg-gradient-to-r from-gray-800/60 to-transparent">
@@ -83,15 +83,28 @@ onMounted(() => {
                   }"
                 />
               </div>
-              <div class="relative">
-                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                <input
-                  v-model="store.searchQuery"
-                  type="text"
-                  placeholder="搜索合约或单号…"
-                  aria-label="搜索交易记录"
-                  class="w-48 bg-gray-700/30 border border-gray-600/30 rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none transition-all duration-200 focus:border-blue-500/40 focus:bg-gray-700/50"
+              <div class="flex items-center gap-2">
+                <button
+                  @click="store.hideClearedTrades = !store.hideClearedTrades"
+                  :class="[
+                    'px-3 py-1.5 text-xs font-bold rounded-lg border transition-all duration-200 active:scale-95 whitespace-nowrap',
+                    store.hideClearedTrades
+                      ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                      : 'bg-gray-700/30 text-gray-400 border-gray-600/30 hover:text-gray-200 hover:border-gray-500/40'
+                  ]"
                 >
+                  {{ store.hideClearedTrades ? '已隐藏清仓' : '隐藏清仓' }}
+                </button>
+                <div class="relative">
+                  <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                  <input
+                    v-model="store.searchQuery"
+                    type="text"
+                    placeholder="搜索合约或单号…"
+                    aria-label="搜索交易记录"
+                    class="w-48 bg-gray-700/30 border border-gray-600/30 rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-200 placeholder-gray-500 outline-none transition-all duration-200 focus:border-blue-500/40 focus:bg-gray-700/50"
+                  >
+                </div>
               </div>
             </div>
             <!-- 列表内容 -->
@@ -102,7 +115,7 @@ onMounted(() => {
         </div>
 
         <!-- 右侧：持仓概览 -->
-        <div class="lg:col-span-5">
+        <div class="lg:col-span-4">
           <div class="bg-gray-800/40 border border-gray-700/30 rounded-2xl shadow-lg shadow-black/20 overflow-hidden sticky top-6">
             <!-- 头部 -->
             <div class="px-5 py-4 border-b border-gray-700/30 bg-gradient-to-r from-gray-800/60 to-transparent">

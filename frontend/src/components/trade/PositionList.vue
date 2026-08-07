@@ -22,6 +22,11 @@ function profitSign(val) {
   return val >= 0 ? '+' : ''
 }
 
+// 浮动盈亏 = (现价 - 摊薄成本) × 持仓数量
+function floatingProfit(p) {
+  return (p.latest_price - p.avg_cost) * p.total_shares
+}
+
 function isClosed(p) {
   return p.total_shares === 0
 }
@@ -40,7 +45,8 @@ async function confirmPrice() {
 function onClear(p) {
   store.showConfirm(
     '确定要清仓吗？这将删除所有相关交易记录！',
-    () => store.clearPosition(p.id)
+    () => store.clearPosition(p.id),
+    '确认清仓'
   )
 }
 </script>
@@ -67,11 +73,25 @@ function onClear(p) {
           <span class="font-bold text-gray-100 text-sm">{{ p.name }}</span>
           <span class="text-xs text-gray-500 font-mono">{{ p.contract }}</span>
         </div>
-        <div
-          class="px-2.5 py-1 rounded-lg text-sm font-bold"
-          :class="[profitClass(p.profit), profitBgClass(p.profit)]"
-        >
-          {{ profitSign(p.profit) }}¥{{ p.profit.toFixed(2) }}
+        <div class="flex items-start gap-2">
+          <div class="flex flex-col items-end">
+            <span class="text-[10px] text-gray-500 mb-0.5">已实现收益</span>
+            <div
+              class="px-2.5 py-1 rounded-lg text-sm font-bold"
+              :class="[profitClass(p.profit), profitBgClass(p.profit)]"
+            >
+              {{ profitSign(p.profit) }}¥{{ p.profit.toFixed(2) }}
+            </div>
+          </div>
+          <div class="flex flex-col items-end">
+            <span class="text-[10px] text-gray-500 mb-0.5">浮动盈亏</span>
+            <div
+              class="px-2.5 py-1 rounded-lg text-sm font-bold"
+              :class="[profitClass(floatingProfit(p)), profitBgClass(floatingProfit(p))]"
+            >
+              {{ profitSign(floatingProfit(p)) }}¥{{ floatingProfit(p).toFixed(2) }}
+            </div>
+          </div>
         </div>
       </div>
 
