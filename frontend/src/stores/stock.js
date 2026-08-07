@@ -442,6 +442,22 @@ export const useStockStore = defineStore('stock', {
       this.portfolioPresetData = null
     },
 
+    // Batch replace actions (for data management page)
+    async batchReplaceTrades(trades) {
+      await api.batchReplaceTrades(trades, this.userId)
+      await this.loadData()
+    },
+
+    async batchReplaceTags(items) {
+      await api.batchReplaceTradeTags(items, this.userId)
+      await this.loadTags()
+    },
+
+    async batchReplacePortfolioItems(items) {
+      await api.batchReplacePortfolioItems(items, this.userId)
+      await this.loadPortfolioItems()
+    },
+
     showToast(msg, type = 'success') {
       const id = Date.now()
       this.toasts.push({ id, msg, type })

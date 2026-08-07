@@ -25,10 +25,12 @@ const sections = computed(() => [
       positions: stockStore.positions,
       tags: stockStore.tags,
     }),
-    setData: (data) => {
-      if (data.trades) stockStore.trades = data.trades
-      if (data.positions) stockStore.positions = data.positions
-      if (data.tags) stockStore.tags = data.tags
+    setData: async (data) => {
+      if (data.trades) {
+        await stockStore.batchReplaceTrades(data.trades)
+      } else if (data.tags) {
+        await stockStore.batchReplaceTags(data.tags)
+      }
     },
   },
   {
@@ -38,8 +40,10 @@ const sections = computed(() => [
     getData: () => ({
       watchlist: watchlistStore.items,
     }),
-    setData: (data) => {
-      if (data.watchlist) watchlistStore.items = data.watchlist
+    setData: async (data) => {
+      if (data.watchlist) {
+        await watchlistStore.batchReplace(data.watchlist)
+      }
     },
   },
   {
@@ -62,8 +66,10 @@ const sections = computed(() => [
     getData: () => ({
       contracts: contractStore.contracts,
     }),
-    setData: (data) => {
-      if (data.contracts) contractStore.contracts = data.contracts
+    setData: async (data) => {
+      if (data.contracts) {
+        await contractStore.batchReplace(data.contracts, stockStore.userId)
+      }
     },
   },
   {
@@ -73,8 +79,10 @@ const sections = computed(() => [
     getData: () => ({
       portfolioItems: stockStore.portfolioItems,
     }),
-    setData: (data) => {
-      if (data.portfolioItems) stockStore.portfolioItems = data.portfolioItems
+    setData: async (data) => {
+      if (data.portfolioItems) {
+        await stockStore.batchReplacePortfolioItems(data.portfolioItems)
+      }
     },
   },
   {
@@ -85,8 +93,11 @@ const sections = computed(() => [
     getData: () => ({
       users: stockStore.users,
     }),
-    setData: (data) => {
-      if (data.users) stockStore.users = data.users
+    setData: async (data) => {
+      if (data.users) {
+        // 用户管理含密码哈希，不支持批量替换
+        throw new Error('用户管理不支持批量保存，请在用户管理页面逐条操作')
+      }
     },
   },
 ])
@@ -157,7 +168,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto space-y-5">
+  <div class="max-w-7xl mx-auto space-y-5">
     <!-- 页头 -->
     <div class="bg-gray-800/40 border border-gray-700/30 rounded-2xl shadow-lg shadow-black/20 p-5">
       <div class="flex items-center gap-3 mb-1">

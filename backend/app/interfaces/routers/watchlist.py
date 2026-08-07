@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.infrastructure.database import get_db
-from app.interfaces.schemas import AddWatchlistRequest, ApiResponse
+from app.domain.models import Watchlist as WatchlistModel
+from app.interfaces.schemas import AddWatchlistRequest, ApiResponse, BatchWatchlistRequest
 from app.application.services import market, watchlist as wl_service
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,16 @@ async def add_watchlist(body: AddWatchlistRequest, db: Session = Depends(get_db)
 
     wl_service.add_watchlist(db, code, name)
     return ApiResponse(data={"code": code, "name": name})
+
+
+@router.put("/batch")
+def batch_replace_watchlist(body: BatchWatchlistRequest, db: Session = Depends(get_db)):
+    """批量替换自选股（先删后插）"""
+    db.query(WatchlistModel).delete()
+    for item in body.items:
+        db.add(WatchlistModel(code=item.code, name=item.name))
+    db.commit()
+    return ApiResponse(data={"status": "success", "count": len(body.items)})
 
 
 @router.delete("/{code}")

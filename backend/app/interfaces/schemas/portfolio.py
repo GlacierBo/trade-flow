@@ -1,5 +1,5 @@
 """持仓比例相关数据传输对象"""
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -22,3 +22,17 @@ class PortfolioItemResponse(BaseModel):
     price: float
     user_id: int
     created_at: Optional[str]
+
+
+class BatchPortfolioItem(BaseModel):
+    """批量替换中的单条持仓比例"""
+    name: str
+    contract: str
+    tag: str = ""
+    price: float
+
+
+class BatchPortfolioRequest(BaseModel):
+    """批量替换持仓比例请求"""
+    items: List[BatchPortfolioItem]
+    user_id: int = 1

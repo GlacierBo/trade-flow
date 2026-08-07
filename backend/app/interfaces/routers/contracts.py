@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.database import get_db
 from app.domain.models.contract import Contract
-from app.interfaces.schemas import ApiResponse, CreateContractRequest, UpdateContractRequest, ContractResponse
+from app.interfaces.schemas import ApiResponse, CreateContractRequest, UpdateContractRequest, ContractResponse, BatchContractRequest
 
 router = APIRouter(prefix="/api/contracts", tags=["contracts"])
 
@@ -47,6 +47,16 @@ def add_contract(body: CreateContractRequest, db: Session = Depends(get_db)):
         user_id=contract.user_id,
         created_at=str(contract.created_at) if contract.created_at else None,
     ))
+
+
+@router.put("/batch")
+def batch_replace_contracts(body: BatchContractRequest, db: Session = Depends(get_db)):
+    """批量替换合约（先删后插）"""
+    db.query(Contract).filter(Contract.user_id == body.user_id).delete()
+    for item in body.items:
+        db.add(Contract(code=item.code, name=item.name, user_id=body.user_id))
+    db.commit()
+    return ApiResponse(data={"status": "success", "count": len(body.items)})
 
 
 @router.put("/{old_code}")

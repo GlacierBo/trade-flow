@@ -1,6 +1,6 @@
 """自选股相关数据传输对象"""
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -32,3 +32,14 @@ class AddWatchlistRequest(BaseModel):
     """添加自选股请求"""
     code: str
     name: Optional[str] = None
+
+
+class BatchWatchlistItem(BaseModel):
+    """批量替换中的单条自选"""
+    code: str
+    name: str
+
+
+class BatchWatchlistRequest(BaseModel):
+    """批量替换自选请求"""
+    items: List[BatchWatchlistItem]
