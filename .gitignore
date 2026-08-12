@@ -55,7 +55,6 @@ cover/
 *.pot
 
 # Database files (runtime artifacts)
-*.db
 *.db-journal
 
 # Logs
